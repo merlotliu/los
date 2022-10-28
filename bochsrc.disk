@@ -1,0 +1,37 @@
+####################################
+# Configuration file for Bochs
+####################################
+
+# 第一步 设置 Bochs 在运行过程中能够使用的内存，本例为 32 MB
+# 关键字为：megs
+megs: 32
+
+# 第二步 设置对应真是机器的 BIOS 和 VGA BIOS
+# 对应两个关键字为: romimage vgaromimage
+romimage: file=/home/ml/bochs/share/bochs/BIOS-bochs-latest
+vgaromimage: file=/home/ml/bochs/share/bochs/VGABIOS-lgpl-latest
+
+# 第三步 设置 Bochs 所使用的磁盘，软盘的关键字为 floppy
+# 若只有一个软盘使用 floppya
+# 若有多个，则为 floppya floppyb ...
+# floppya: l_44=a.img, status=inserted
+
+# 第四步 选择启动盘符
+# boot = floppy # 默认软盘启动，将其注释
+boot: disk		# 改为硬盘启动。（我们的代码都写在 硬盘上，不会读取软盘）
+
+# 第五步 设置日志输出
+log: bochs.out
+
+# 第六步 开启或关闭某些功能
+mouse: enabled=0 # 关闭鼠标
+# 打开键盘
+keyboard_mapping: enabled=1, map=/home/ml/bochs/share/bochs/keymaps/x11-pc-us.map
+
+# 硬盘设置
+ata0: enabled=1, ioaddr1=0x1f0, ioaddr2=0x3f0, irq=14
+ata0-master: type=disk, path="hd60M.img", mode=flat, cylinders=121, heads=16, spt=63
+
+# 下面的是增加的 bochs 对 gdb 的支持，可以方便 gdb 远程连接到机器的 1234 端口调试
+# configure 的时候配置了 --enable-gdb-stub 才需要配置 都则会报错
+# gdbstub: enabled=1, port=1234, text_base=0, data_base=0, bss_base=0
