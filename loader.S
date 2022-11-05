@@ -32,19 +32,60 @@ SELECTOR_DATA equ (0x0002 << 3) + TI_GDT + RPL0
 SELECTOR_VIDEO equ (0x0003 << 3) + TI_GDT + RPL0
 
 ; total_mem_bytes save memory size, unit is bytes
-; total_mem_bytes dd 0
+; total_mem_bytes 在内存中的地址是 0xb03
+total_mem_bytes dd 0
 
 ; gdt pointer : front 2 bytes is gdt limit, back 4 bytes is gdt start address
 gdt_ptr dw GDT_LIMIT
         dd GDT_BASE
 
-loadermsg db '2 loader in read.'
+; loadermsg db '2 loader in read.'
 
-; ; 
-; ards_buf timer 244 db 0
-; ards_nr dw 0
+; total_mem_bytes(4) + gdt_ptr(6) + ards_buf(244) + ards_br(2) = 256
+ards_buf times 244 db 0
+ards_nr dw 0
 
 loader_start:
+; int 15h eax = 0000E820h, edx = 534D4150h ('SMAP) get memory layout
+	xor ebx, ebx
+	mov edx, 0x534D4150
+	mov di, ards_buf
+
+	.e820_mem_get_loop:
+		mov eax, 0x0000E820
+		mov ecx, 20 ; ARDS 地址范围描述符结构大小 20 字节
+		int 0x15
+		jc .e820_failed_so_try_e801 ; cf 为 1，错误
+		add di, cx ; 增加 20 字节指向新的 ARDS 结构位置
+		inc word [ards_nr]
+		cmp ebx, 0 ; 若 ebx 为 0 且 cf 不为 1，说明 ards 全部返回
+		jnz .e820_mem_get_loop
+
+		; 在所有 ards 结构中找到(base_add_low + length_low) 的最大值
+		; 即内存容量
+		mov cx, [ards_nr]
+		mov ebx, ards_buf
+		xor edx, edx ; edx 为最大内存容量
+
+	.find_max_mem_area:
+		mov eax, [ebx] ; base_add_low
+		add eax, [ebx + 8] ; length_low
+		add ebx, 20 ; 指向缓冲区的下一个 ARDS 结构
+		cmp edx, eax
+
+		jge .next_ards
+		mov edx, eax
+
+	.next_ards:
+		loop .find_max_mem_area
+		jmp .mem_get_ok
+
+	.e820_failed_so_try_e801:
+		; 暂未实现
+
+	.mem_get_ok:
+		mov [total_mem_bytes], edx
+
 ;------------------------------------------------------------
 ; INT Ox10 功能号： Ox13 功能描述：打印字符串
 ;------------------------------------------------------------
@@ -63,13 +104,13 @@ loader_start:
 ; 2——字符事中含显示字符和显示属性。显示后，光标位置不变
 ; 3——字符串中含显示字符和显示属性。显示后，光标位置改变
 ; 无返回值
-    mov sp, LOADER_BASE_ADDR    
-    mov bp, loadermsg           ; ES:BP = 字符串地址
-    mov cx, 17                  ; CX = 字符长度
-    mov ax, 0x1301              ; AH=13,AL=01h
-    mov bx, 0x001f              ; 页号为 0（BH=0）蓝底粉红字（BL=1fh）
-    mov dx, 0x1800
-    int 0x10                    ; 10h 号中断
+    ; mov sp, LOADER_BASE_ADDR    
+    ; mov bp, loadermsg           ; ES:BP = 字符串地址
+    ; mov cx, 17                  ; CX = 字符长度
+    ; mov ax, 0x1301              ; AH=13,AL=01h
+    ; mov bx, 0x001f              ; 页号为 0（BH=0）蓝底粉红字（BL=1fh）
+    ; mov dx, 0x1800
+    ; int 0x10                    ; 10h 号中断
 
 ; ----------------- preparation for protected mode  ----------------- 
 ; 1 open A20
@@ -104,7 +145,7 @@ p_mode_start:
     mov ax, SELECTOR_VIDEO
     mov gs, ax
 
-    mov byte [gs:160], 'P'
+    ; mov byte [gs:160], 'P'
 
     ; load kernel
     mov eax, KERNEL_START_SECTOR
@@ -145,13 +186,19 @@ p_mode_start:
     lgdt [gdt_ptr]
 
     ; 测试代码，正常输出字符 'V' 则成功
-    mov byte [gs:162],'V'
+    ; mov byte [gs:162],'V'
 
     jmp SELECTOR_CODE:enter_kernel
 
 enter_kernel:
 	call kernel_init
 	mov esp, 0xc009f000
+	; mov byte [gs:164],'K'
+
+	; 光标位置清 0
+	mov bx, 0x0
+	call clear_cursor
+
 	jmp KERNEL_ENTRY_POINT
 
 ; 创建页目录及页表
@@ -241,13 +288,17 @@ kernel_init:
 	xor edx, edx ; edx 记录 program header 尺寸 即 e_phentsize
 	
 	; 偏移到 e_phentsize 标识 program header 大小
-	mov dx, [KERNEL_BIN_BASE_ADDR + 42]
+	mov dx, [KERNEL_BIN_BASE_ADDR + 42] ; 32 bit
+	; mov dx, [KERNEL_BIN_BASE_ADDR + 54] ; 64 bit
 	; e_phoff
-	mov ebx, [KERNEL_BIN_BASE_ADDR + 28]
+	mov ebx, [KERNEL_BIN_BASE_ADDR + 28] ; 32 bit
+	; mov ebx, [KERNEL_BIN_BASE_ADDR + 32] ; 64 bit
+	; mov ebx,0x34
 
 	; 偏移到 e_phnum 标识有几个 program header
     add ebx, KERNEL_BIN_BASE_ADDR
-	mov cx, [KERNEL_BIN_BASE_ADDR + 44]
+	mov cx, [KERNEL_BIN_BASE_ADDR + 44] ; 32 bit
+	; mov cx, [KERNEL_BIN_BASE_ADDR + 56] ; 64 bit
 	
 .each_segment:
 	cmp byte [ebx + 0], PT_NULL
@@ -257,17 +308,20 @@ kernel_init:
 	; 为函数 memcpy 压入参数，参数从右至左依次压栈
 	; 函数原型类似 memcpy(dst, src, size)
 	; 偏移到 program header 中 p_filesz所在的位置
-	; 即 memcpy 第三个参数 size
-	push dword [ebx + 16]
+	; 即 memcpy 第三个参数 size 8 字节
+	push dword [ebx + 16] ; 32 bit
+	; push dword [ebx + 32] ; 64 bit
 	; 获取 p_offset 的值
-	mov eax, [ebx + 4];
+	mov eax, [ebx + 4]; 32 bit
+	; mov eax, [ebx + 8] ; 64 bit
 	; 加上 kernel.bin 被加载的物理地址，eax 为该段的物理地址
 	add eax, KERNEL_BIN_BASE_ADDR
 	; memcpy 第2个参数 : src
 	push eax
     ; memcpy 第1个参数 : dest
 	; 偏移 8 个字节位置是 p_vaddr 即目的地址
-	push dword [ebx + 8]
+	push dword [ebx + 8] ; 32 bit
+	; push dword [ebx + 16] ; 64 bit
 	; 调用 mem_cpy 完成段复制
 	call mem_cpy
 	; 清理栈中压入的3个参数
@@ -348,7 +402,7 @@ rd_disk_m_32:
 	; 同一端口，写时表示写入命令字，读时表示读入硬盘状态
 	nop
 	in al,dx
-	and al,0x88		; 第4位为1表示硬盘控制器已准备好数据传输
+	and al,0x88		; 第3位为1表示硬盘控制器已准备好数据传输
 					; 第7位为1表示硬件忙
     cmp al,0x08
     jnz .not_ready	; 若未准备好，继续等
@@ -363,10 +417,46 @@ rd_disk_m_32:
 	mov dx,0x1f0
 .go_on_read:
 	in ax,dx
-    mov [bx],ax
-    add bx,2
+    mov [ebx],ax
+    add ebx,2
     loop .go_on_read
+		; 由于在实模式下偏移地址为16位,所以用bx只会访问到0~FFFFh的偏移。
+		; loader的栈指针为0x900,bx为指向的数据输出缓冲区,且为16位，
+		; 超过0xffff后,bx部分会从0开始,所以当要读取的扇区数过大,待写入的地址超过bx的范围时，
+		; 从硬盘上读出的数据会把0x0000~0xffff的覆盖，
+		; 造成栈被破坏,所以ret返回时,返回地址被破坏了,已经不是之前正确的地址,
+		; 故程序出会错,不知道会跑到哪里去。
+		; 所以改为ebx代替bx指向缓冲区,这样生成的机器码前面会有0x66和0x67来反转。
+		; 0X66用于反转默认的操作数大小! 0X67用于反转默认的寻址方式.
+		; cpu处于16位模式时,会理所当然的认为操作数和寻址都是16位,处于32位模式时,
+		; 也会认为要执行的指令是32位.
+		; 当我们在其中任意模式下用了另外模式的寻址方式或操作数大小(姑且认为16位模式用16位字节操作数，
+		; 32位模式下用32字节的操作数)时,编译器会在指令前帮我们加上0x66或0x67，
+		; 临时改变当前cpu模式到另外的模式下.
+		; 假设当前运行在16位模式,遇到0X66时,操作数大小变为32位.
+		; 假设当前运行在32位模式,遇到0X66时,操作数大小变为16位.
+		; 假设当前运行在16位模式,遇到0X67时,寻址方式变为32位寻址
+		; 假设当前运行在32位模式,遇到0X67时,寻址方式变为16位寻址.
 	ret
 ;-----------------------------------------------------
 ; 读取硬盘结束
 ;-----------------------------------------------------
+
+clear_cursor:
+    ; 1 设置高 8 位
+	mov dx, 0x03d4 ; 索引寄存器
+	mov al, 0x0e ; 用于提供光标位置的高 8 位
+	out dx, al
+	mov dx, 0x03d5 ; 通过读写 0x03d5 获得或设置光标位置
+	mov al, bh
+	out dx, al
+
+    ; 2 设置低 8 位
+	mov dx, 0x03d4
+	mov al, 0x0f
+	out dx, al
+	mov dx, 0x03d5
+	mov al, bl
+	out dx, al
+	
+	ret
