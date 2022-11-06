@@ -4,7 +4,7 @@ ENTRY_POINT = 0xc0001500
 AS			= nasm
 CC 			= gcc
 LD 			= ld
-LIB 		= -I lib/ -I lib/kernel -I lib/user/ -I kernel/ -I device/ -I thread/
+LIB 		= -I kernel/ -I device/ -I thread/ -I lib/ -I lib/kernel -I lib/user/ 
 
 ASFLAGS 	= -f elf
 CFLAGS		= -m32 -Wall $(LIB) -c -fno-builtin -W -Wstrict-prototypes -Wmissing-prototypes
@@ -22,9 +22,11 @@ OBJS		= 	$(BUILD_DIR)/main.o \
 				$(BUILD_DIR)/memory.o \
 				$(BUILD_DIR)/thread.o \
 				$(BUILD_DIR)/list.o \
-				$(BUILD_DIR)/switch.o
+				$(BUILD_DIR)/switch.o \
+				$(BUILD_DIR)/sync.o
 
 # C
+# kernel
 $(BUILD_DIR)/main.o: kernel/main.c \
 					lib/kernel/print.h lib/stdint.h kernel/init.h
 	$(CC) $(CFLAGS) $< -o $@
@@ -37,37 +39,47 @@ $(BUILD_DIR)/interrupt.o: kernel/interrupt.c \
 						kernel/interrupt.h lib/stdint.h kernel/global.h lib/kernel/io.h lib/kernel/print.h
 	$(CC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/timer.o: device/timer.c \
-					device/timer.h lib/stdint.h lib/kernel/io.h lib/kernel/print.h
-	$(CC) $(CFLAGS) $< -o $@
-
 $(BUILD_DIR)/debug.o: kernel/debug.c \
 					kernel/debug.h lib/kernel/print.h lib/stdint.h kernel/interrupt.h
-	$(CC) $(CFLAGS) $< -o $@
-
-$(BUILD_DIR)/string.o: lib/string.c 
-	$(CC) $(CFLAGS) $< -o $@
-
-$(BUILD_DIR)/bitmap.o: lib/kernel/bitmap.c
 	$(CC) $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/memory.o: kernel/memory.c 
 	$(CC) $(CFLAGS) $< -o $@
 
-$(BUILD_DIR)/thread.o: thread/thread.c 
+# device
+$(BUILD_DIR)/timer.o: device/timer.c \
+					device/timer.h lib/stdint.h lib/kernel/io.h lib/kernel/print.h
 	$(CC) $(CFLAGS) $< -o $@
-	
+
+# lib
+$(BUILD_DIR)/string.o: lib/string.c 
+	$(CC) $(CFLAGS) $< -o $@
+
+# lib/kernel
+$(BUILD_DIR)/bitmap.o: lib/kernel/bitmap.c
+	$(CC) $(CFLAGS) $< -o $@
+
 $(BUILD_DIR)/list.o: lib/kernel/list.c 
 	$(CC) $(CFLAGS) $< -o $@
 
+# thread
+$(BUILD_DIR)/thread.o: thread/thread.c 
+	$(CC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/sync.o: thread/sync.c 
+	$(CC) $(CFLAGS) $< -o $@
+
 # assembly	
+# kernel
 $(BUILD_DIR)/kernel.o: kernel/kernel.S
 	$(AS) $(ASFLAGS) $< -o $@
 
-$(BUILD_DIR)/print.o: lib/kernel/print.S
+# thread
+$(BUILD_DIR)/switch.o: thread/switch.S
 	$(AS) $(ASFLAGS) $< -o $@
 
-$(BUILD_DIR)/switch.o: thread/switch.S
+# lib/kernel
+$(BUILD_DIR)/print.o: lib/kernel/print.S
 	$(AS) $(ASFLAGS) $< -o $@
 	
 # link all of object file
