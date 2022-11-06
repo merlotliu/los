@@ -1,4 +1,11 @@
 #include "init.h"
+#include "print.h"
+#include "interrupt.h"
+#include "timer.h"
+#include "memory.h"
+#include "thread.h"
+#include "console.h"
+#include "keyboard.h"
 
 /* init all of content */
 void init_all(void) {
@@ -8,4 +15,5 @@ void init_all(void) {
     thread_env_init(); /* init thread environment */
     timer_init(); /* init PIT */
     console_init(); /* init console before open interrupt */
+    keyboard_init(); /* init keyboard input */
 }

@@ -24,7 +24,8 @@ OBJS		= 	$(BUILD_DIR)/main.o \
 				$(BUILD_DIR)/list.o \
 				$(BUILD_DIR)/switch.o \
 				$(BUILD_DIR)/sync.o \
-				$(BUILD_DIR)/console.o
+				$(BUILD_DIR)/console.o \
+				$(BUILD_DIR)/keyboard.o
 
 # C
 # kernel
@@ -53,6 +54,9 @@ $(BUILD_DIR)/timer.o: device/timer.c \
 	$(CC) $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/console.o: device/console.c
+	$(CC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/keyboard.o: device/keyboard.c
 	$(CC) $(CFLAGS) $< -o $@
 
 # lib

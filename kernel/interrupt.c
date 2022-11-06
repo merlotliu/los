@@ -4,7 +4,7 @@
 #include "io.h"
 #include "print.h"
 
-#define IDT_DESC_CNT 0x21 /* curent interrput handler count */
+#define IDT_DESC_CNT 0x30 /* curent interrput handler count */
 #define PIC_M_CTRL 0x20 /* master control port */
 #define PIC_M_DATA 0x21 /* master data port */
 #define PIC_S_CTRL 0xa0 /* slave control port */
@@ -23,7 +23,9 @@ struct gate_desc {
     uint16_t func_offset_high_word;
 };
 
-static void make_idt_desc(struct gate_desc* p_gdesc, uint8_t attr, intr_handler function);
+// static void make_idt_desc(struct gate_desc* p_gdesc, uint8_t attr, intr_handler function);
+
+/* intr door descriptor array */
 static struct gate_desc idt[IDT_DESC_CNT];
 
 /* save exception name */
@@ -65,8 +67,12 @@ static void pic_init(void) {
     outb(PIC_S_DATA, 0x01); /* ICW4: 0000 0001 */
 
     /* open IR0 of master : accept interrupt of alarm */
-    outb(PIC_M_DATA, 0xfe); /* master OCW1: 1111 1110 */
-    outb(PIC_S_DATA, 0xff); /* slave OCW1: 1111 1111 */
+    // outb(PIC_M_DATA, 0xfe); /* master OCW1: 1111 1110 */
+    // outb(PIC_S_DATA, 0xff); /* slave OCW1: 1111 1111 */
+
+    /* test keyboard, only open keyboard intr */
+    outb(PIC_M_DATA, 0xfd);
+    outb(PIC_S_DATA, 0xff);
 
     put_str("   pic_init done\n");
 }

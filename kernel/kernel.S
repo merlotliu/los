@@ -79,4 +79,19 @@ VECTOR 0x1c, ZERO
 VECTOR 0x1d, ZERO
 VECTOR 0x1e, ZERO
 VECTOR 0x1f, ZERO
-VECTOR 0x20, ZERO
+VECTOR 0x20, ZERO ; clock interrupt entry
+VECTOR 0x21, ZERO ; keyboard interrupt entry
+VECTOR 0x22, ZERO ; 级联
+VECTOR 0x23, ZERO ; 串口2对应的入口
+VECTOR 0x24, ZERO ; 串口1对应的入口
+VECTOR 0x25, ZERO ; 并口2对应的入口
+VECTOR 0x26, ZERO ; 软盘对应的入口
+VECTOR 0x27, ZERO ; 并口1对应的入口
+VECTOR 0x28, ZERO ; 实时时钟对应的入口
+VECTOR 0x29, ZERO ; 重定向
+VECTOR 0x2a, ZERO ; reserve
+VECTOR 0x2b, ZERO ; reserve
+VECTOR 0x2c, ZERO ; ps/2 鼠标
+VECTOR 0x2d, ZERO ; fpu 浮点单元异常
+VECTOR 0x2e, ZERO ; hard disk
+VECTOR 0x2f, ZERO ; reserve

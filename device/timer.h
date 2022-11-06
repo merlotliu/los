@@ -4,4 +4,4 @@
 /* init PIT */
 void timer_init(void);
 
-#endif
+#endif /* __DEVICE_TIMER_H */
