@@ -12,7 +12,8 @@ enum task_status {
 	TASK_RUNNING, /* running */
 	TASK_READY, /* reading */
 	TASK_BLOCKED, /* blocked */
-	TASK_HANDING, /* hang out */
+	TASK_WAITING, /* waiting */
+	TASK_HANGING, /* hanging */
 	TASK_DIED
 };
 
@@ -92,6 +93,12 @@ void thread_attr_init(struct task_ctl_blk* pthread, char* name, int priority);
 
 /* 创建优先级为 prio 名为 name 的线程，执行函数为 func(func_arg) */
 struct task_ctl_blk* thread_start(char* name, int priority, thread_func* func, void* func_arg);
+
+/* thread block */
+void thread_block(enum task_status stat);
+
+/* wakeup blocked thread */
+void thread_unblock(struct task_ctl_blk* pthread);
 
 /* task schedule */
 void schedule(void);

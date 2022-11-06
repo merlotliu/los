@@ -82,6 +82,33 @@ struct task_ctl_blk* thread_start(char* name, int priority, thread_func* func, v
     return thread;
 }
 
+/* thread block */
+void thread_block(enum task_status stat) {
+    ASSERT((TASK_BLOCKED == stat) || (TASK_WAITING == stat) || (TASK_HANGING == stat));
+    enum intr_status old_stat = intr_status_get();
+
+    struct task_ctl_blk* cur_tcb = thread_running();
+    cur_tcb->status = stat;
+    schedule();
+
+    intr_status_set(old_stat);
+}
+
+/* wakeup blocked thread */
+void thread_unblock(struct task_ctl_blk* pthread) {
+    enum intr_status old_stat = intr_status_get();
+    ASSERT((TASK_BLOCKED == pthread->status) || (TASK_WAITING == pthread->status) || (TASK_HANGING == pthread->status));
+    if(TASK_READY == pthread->status) {
+        ASSERT(!elem_find(&thread_ready_list, &pthread->general_tag));
+        if(elem_find(&thread_ready_list, &pthread->general_tag)) {
+            PANIC("thread_unblock: blocked thread in ready_list\n") ;
+        }
+        list_push_front(&thread_ready_list, &pthread->general_tag);
+        pthread->status = TASK_READY;
+    }
+    intr_status_set(old_stat);
+}
+
 /* 将 kernel 中的 main 函数完善为主线程 */
 static void make_main_thread(void) {
     /* main 线程早已经运行，
