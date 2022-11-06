@@ -63,10 +63,12 @@ static void timer_intr_handler(void) {
     }
 }
 
+/* init PIT */
 void timer_init(void) {
     put_str("timer_init start\n");
     set_ctl_mode(PIT_CONTROL_PORT, COUNTER0_NO, READ_WRITE_LATCH, COUNTER_MODE_2, PIT_BCD_0);
     set_frequency(COUNTER0_PORT, COUNTER0_VALUE);
+    put_str("   "); /* intent(no meanning) */
     intr_handler_register(0x20, timer_intr_handler);
     put_str("timer_init done\n");
 }

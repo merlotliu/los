@@ -18,7 +18,10 @@ typedef struct {
 void sem_init(sem_t *psem, uint8_t val);
 /* sem_wait decrements the semaphore pointed to by psem */
 void sem_wait(sem_t *psem);
-/* sem_wait increments the semaphore pointed to by psem */
+/* sem_post increments the semaphore pointed to by psem. 
+    If the semaphore's value consequently becomes greater than zero, 
+    then another process or thread blocked in a sem_wait call will
+    be woken up and proceed to lock the semaphore. */
 void sem_post(sem_t *psem);
 
 /********************* locker *******************

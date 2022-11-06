@@ -87,13 +87,15 @@ static void mem_pool_init(uint32_t all_mem) {
     /* print memory pool information */
     put_str("       kernel_phy_pool_bitmap_start:");
     put_int((int)kernel_phy_pool.pool_bitmap.bits);
-    put_str(" kernel_phy_pool_phy_addr_start :");
+    put_str("\n");
+    put_str("       kernel_phy_pool_phy_addr_start :");
     put_int(kernel_phy_pool.phy_addr_start);
     put_str("\n");
     
     put_str("       user_phy_pool bi tmap_start :");
     put_int((int) user_phy_pool .pool_bitmap .bits);
-    put_str(" user_phy_pool_phy_addr_start: ");
+    put_str("\n");
+    put_str("       user_phy_pool_phy_addr_start: ");
     put_int(user_phy_pool.phy_addr_start);
     put_str("\n");
 

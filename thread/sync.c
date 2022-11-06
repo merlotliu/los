@@ -26,7 +26,7 @@ void sem_wait(sem_t *psem) {
     intr_status_set(old_stat);
 }
 
-/* sem_wait increments the semaphore pointed to by psem. 
+/* sem_post increments the semaphore pointed to by psem. 
     If the semaphore's value consequently becomes greater than zero, 
     then another process or thread blocked in a sem_wait call will
     be woken up and proceed to lock the semaphore. */
@@ -34,9 +34,10 @@ void sem_post(sem_t *psem) {
     enum intr_status old_stat = intr_disable();
     
     if(!list_empty(&psem->waiters)) {
+
         struct task_ctl_blk* thread_blocked = 
             elem2entry(struct task_ctl_blk, general_tag, list_pop(&psem->waiters));
-        thread_unblock(thread_blocked);
+        thread_unblock(thread_blocked);    
     }
     psem->value++;
     ASSERT(psem->value > 0);
@@ -58,10 +59,11 @@ void locker_lock(locker_t *plocker) {
     /* avoid repeat apply locker */
     if(plocker->holder != thread_running()) {
         sem_wait(&plocker->sem); /* P */
-        plocker->holder = thread_running();
-        
-        ASSERT(plocker->holder_repeat_nr == 0);
+        ASSERT(plocker->sem.value == 0);
 
+        plocker->holder = thread_running();
+    
+        ASSERT(plocker->holder_repeat_nr == 0);
         plocker->holder_repeat_nr = 1;
     } else {
         plocker->holder_repeat_nr++;

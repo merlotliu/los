@@ -8,6 +8,8 @@
 #include "print.h"
 #include "list.h"
 
+#define MAIN_THREAD_PRIORITY 31
+
 struct task_ctl_blk* main_thread; /* main thread PCB */
 struct list thread_ready_list; /* ready tasks queue */
 struct list thread_all_list; /* all tasks queue */
@@ -85,7 +87,7 @@ struct task_ctl_blk* thread_start(char* name, int priority, thread_func* func, v
 /* thread block */
 void thread_block(enum task_status stat) {
     ASSERT((TASK_BLOCKED == stat) || (TASK_WAITING == stat) || (TASK_HANGING == stat));
-    enum intr_status old_stat = intr_status_get();
+    enum intr_status old_stat = intr_disable();
 
     struct task_ctl_blk* cur_tcb = thread_running();
     cur_tcb->status = stat;
@@ -96,9 +98,10 @@ void thread_block(enum task_status stat) {
 
 /* wakeup blocked thread */
 void thread_unblock(struct task_ctl_blk* pthread) {
-    enum intr_status old_stat = intr_status_get();
     ASSERT((TASK_BLOCKED == pthread->status) || (TASK_WAITING == pthread->status) || (TASK_HANGING == pthread->status));
-    if(TASK_READY == pthread->status) {
+    enum intr_status old_stat = intr_disable();
+
+    if(TASK_READY != pthread->status) {
         ASSERT(!elem_find(&thread_ready_list, &pthread->general_tag));
         if(elem_find(&thread_ready_list, &pthread->general_tag)) {
             PANIC("thread_unblock: blocked thread in ready_list\n") ;
@@ -106,6 +109,7 @@ void thread_unblock(struct task_ctl_blk* pthread) {
         list_push_front(&thread_ready_list, &pthread->general_tag);
         pthread->status = TASK_READY;
     }
+
     intr_status_set(old_stat);
 }
 
@@ -116,7 +120,7 @@ static void make_main_thread(void) {
     0xc009f000 即为预留的 PCB，故 
     PCB 地址为 0xc009e000，不需要另外申请页面 */
     main_thread = thread_running();
-    thread_attr_init(main_thread, "main", 31);
+    thread_attr_init(main_thread, "main", MAIN_THREAD_PRIORITY);
 
     /* main 函数为当前线程，不在就绪队列中，仅在 thread_all_list 中 */
     ASSERT(!(elem_find(&thread_all_list, &main_thread->all_list_tag)));
@@ -149,8 +153,6 @@ void schedule(void) {
     struct task_ctl_blk* next_tcb =\
         elem2entry(struct task_ctl_blk, general_tag, thread_tag);
     next_tcb->status = TASK_RUNNING;
-    
-    // put_int((uint32_t)next_tcb); put_str("\n");
 
     switch_to(cur_tcb, next_tcb);
 }

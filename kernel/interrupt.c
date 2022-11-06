@@ -190,6 +190,7 @@ enum intr_status intr_status_set(enum intr_status status) {
 void intr_handler_register(uint8_t vec_no, intr_handler func) {
     /* call handler according interrupt vector number. see kernel/loader.S call [idt_table + %1 * 4] */
     idt_table[vec_no] = func;
-    put_int((uint32_t)func);
-    put_str(" register success\n");
+    put_str("interrupt vector 0x"); 
+    put_int((uint32_t)vec_no); 
+    put_str(" register handler success\n");
 }

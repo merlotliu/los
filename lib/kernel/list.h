@@ -28,7 +28,7 @@ struct list {
 };
 
 /* callback function */
-typedef bool (list_func)(struct list_elem*, int arg);
+typedef bool (list_func)(struct list_elem*, void*);
 
 /* init double linked list */
 void list_init(struct list* list);
@@ -55,7 +55,7 @@ bool list_empty(struct list* plist);
 uint32_t list_len(struct list* plist);
 
 /* 遍历 plist 列表，寻找符合 func 条件的元素并返回，没有则返回 NULL */
-struct list_elem* list_traversal(struct list* plist, list_func func, int arg);
+struct list_elem* list_traversal(struct list* plist, list_func func, void *arg);
 
 /* if obj_elem is exist in plist return true else return false */
 bool elem_find(struct list* plist, struct list_elem* obj_elem);
