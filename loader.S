@@ -1,7 +1,11 @@
 %include "boot.inc"
+
 section loader vstart=LOADER_BASE_ADDR
 LOADER_STACK_TOP equ LOADER_BASE_ADDR
-jmp loader_start
+; 计算出 loader_start 相对于 LOADER_BASE_ADDR 的偏移
+; 直接加 mbr 的跳转语句，则这一句 jmp 可省略
+; 这样的好处是可以将 GDT_BASE 设置为 0x900, 内存大小的存储在 0xb00
+; jmp loader_start 
 
 ; create GDT & internal segment discriptor
 GDT_BASE: 
@@ -32,19 +36,18 @@ SELECTOR_DATA equ (0x0002 << 3) + TI_GDT + RPL0
 SELECTOR_VIDEO equ (0x0003 << 3) + TI_GDT + RPL0
 
 ; total_mem_bytes save memory size, unit is bytes
-; total_mem_bytes 在内存中的地址是 0xb03
+; total_mem_bytes 在内存中的地址是 0xb00 = 0x900 + 32 + 60*8 = 0x900 + 0x200
 total_mem_bytes dd 0
 
 ; gdt pointer : front 2 bytes is gdt limit, back 4 bytes is gdt start address
 gdt_ptr dw GDT_LIMIT
         dd GDT_BASE
 
-; loadermsg db '2 loader in read.'
-
-; total_mem_bytes(4) + gdt_ptr(6) + ards_buf(244) + ards_br(2) = 256
 ards_buf times 244 db 0
 ards_nr dw 0
 
+; 0xc00 = 0xb00 + total_mem_bytes(4) + gdt_ptr(6) + ards_buf(244) + ards_br(2) = 0xb00 + 0x100(256)
+; 0x300 = 0xc00 - 0x900
 loader_start:
 ; int 15h eax = 0000E820h, edx = 534D4150h ('SMAP) get memory layout
 	xor ebx, ebx
@@ -167,7 +170,7 @@ p_mode_start:
     ; 0xc0000000 中仅最高 1 字节不为 0，以下 or 操作也只会修改最高 1 字节的值
     or dword [ebx + 0x18 + 4], 0xc0000000
 
-    ; 修改 gdt 的基址：加上 0xc0000000
+    ; 修改 gdt 的基址：加上 0xc0000000 
     add dword [gdt_ptr + 2], 0xc0000000
 
     ; 修改栈指针的基址
