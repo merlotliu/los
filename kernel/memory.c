@@ -4,6 +4,8 @@
 #include "debug.h"
 #include "string.h"
 
+#define MEMORY_TOTAL_SIZE *((uint32_t*)(0xb00));
+
 /*******************位图地址*******************
  * 0xc009f000 是内核主线程栈顶
  * 0xc009e000 位内核主线程 pcb
@@ -119,7 +121,7 @@ static void mem_pool_init(uint32_t all_mem) {
 void mem_init(void) {
     put_str("mem_init start\n");
     /* 0xb03 开始 32 位存放了内存的总容量 */
-    uint32_t mem_bytes_total = *((uint32_t*)(0xb03));
+    uint32_t mem_bytes_total = MEMORY_TOTAL_SIZE;
     mem_pool_init(mem_bytes_total); /* init memory pool */
     put_str("mem_init done\n");
 }

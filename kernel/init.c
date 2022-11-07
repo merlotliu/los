@@ -6,6 +6,7 @@
 #include "thread.h"
 #include "console.h"
 #include "keyboard.h"
+#include "tss.h"
 
 /* init all of content */
 void init_all(void) {
@@ -16,4 +17,5 @@ void init_all(void) {
     timer_init(); /* init PIT */
     console_init(); /* init console before open interrupt */
     keyboard_init(); /* init keyboard input */
+    tss_init(); /* init TSS */
 }

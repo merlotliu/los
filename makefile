@@ -4,7 +4,7 @@ ENTRY_POINT = 0xc0001500
 AS			= nasm
 CC 			= gcc
 LD 			= ld
-LIB 		= -I kernel/ -I device/ -I thread/ -I lib/ -I lib/kernel -I lib/user/ 
+LIB 		= -I kernel/ -I device/ -I thread/ -I userprog/ -I lib/ -I lib/kernel -I lib/user/ 
 
 ASFLAGS 	= -f elf
 CFLAGS		= -m32 -Wall $(LIB) -c -fno-builtin -W -Wstrict-prototypes -Wmissing-prototypes
@@ -26,7 +26,8 @@ OBJS		= 	$(BUILD_DIR)/main.o \
 				$(BUILD_DIR)/sync.o \
 				$(BUILD_DIR)/console.o \
 				$(BUILD_DIR)/keyboard.o \
-				$(BUILD_DIR)/ioqueue.o
+				$(BUILD_DIR)/ioqueue.o \
+				$(BUILD_DIR)/tss.o
 
 # C
 # kernel
@@ -81,6 +82,9 @@ $(BUILD_DIR)/thread.o: thread/thread.c
 $(BUILD_DIR)/sync.o: thread/sync.c 
 	$(CC) $(CFLAGS) $< -o $@
 
+$(BUILD_DIR)/tss.o: userprog/tss.c 
+	$(CC) $(CFLAGS) $< -o $@
+
 # assembly	
 # kernel
 $(BUILD_DIR)/kernel.o: kernel/kernel.S
@@ -93,18 +97,26 @@ $(BUILD_DIR)/switch.o: thread/switch.S
 # lib/kernel
 $(BUILD_DIR)/print.o: lib/kernel/print.S
 	$(AS) $(ASFLAGS) $< -o $@
-	
+
 # link all of object file
 $(BUILD_DIR)/kernel.bin: $(OBJS)
 	$(LD) $(LDFLAGS) $^ -o $@
 
-.PHONY : mk_dir hd clean all
+.PHONY : mk_dir hd mbr loader clean all
 
 mk_dir:
 	if[[! -d $(BUILD_DIR)]]; then mkdir $(BUILD_DIR); fi
 
 hd:
 	dd if=$(BUILD_DIR)/kernel.bin of=/home/ml/bochs/hd60M.img bs=512 count=200 seek=9 conv=notrunc
+
+mbr:
+	$(AS) mbr.S -o $(BUILD_DIR)/mbr.bin -I include/
+	dd if=$(BUILD_DIR)/mbr.bin of=/home/ml/bochs/hd60M.img bs=512 count=1 conv=notrunc
+
+loader:
+	$(AS) loader.S -o $(BUILD_DIR)/loader.bin -I include/
+	dd if=$(BUILD_DIR)/loader.bin of=/home/ml/bochs/hd60M.img bs=512 count=6 seek=2 conv=notrunc
 
 clean:
 	cd $(BUILD_DIR) && rm -rf ./*
