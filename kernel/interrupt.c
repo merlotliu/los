@@ -71,7 +71,7 @@ static void pic_init(void) {
     // outb(PIC_S_DATA, 0xff); /* slave OCW1: 1111 1111 */
 
     /* test keyboard, only open keyboard intr */
-    outb(PIC_M_DATA, 0xfd);
+    outb(PIC_M_DATA, 0xfc);
     outb(PIC_S_DATA, 0xff);
 
     put_str("   pic_init done\n");
