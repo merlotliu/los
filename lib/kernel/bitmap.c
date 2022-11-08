@@ -7,7 +7,6 @@
  * @brief: 将位图清空，所有位置为 0  
  */
 void bitmap_init(struct bitmap* btmp) {
-    ASSERT(btmp != NULL);
     memset(btmp->bits, 0, btmp->btmp_bytes_len);
 }
 

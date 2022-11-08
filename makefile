@@ -27,7 +27,8 @@ OBJS		= 	$(BUILD_DIR)/main.o \
 				$(BUILD_DIR)/console.o \
 				$(BUILD_DIR)/keyboard.o \
 				$(BUILD_DIR)/ioqueue.o \
-				$(BUILD_DIR)/tss.o
+				$(BUILD_DIR)/tss.o \
+				$(BUILD_DIR)/process.o
 
 # C
 # kernel
@@ -82,7 +83,11 @@ $(BUILD_DIR)/thread.o: thread/thread.c
 $(BUILD_DIR)/sync.o: thread/sync.c 
 	$(CC) $(CFLAGS) $< -o $@
 
+# userprog
 $(BUILD_DIR)/tss.o: userprog/tss.c 
+	$(CC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/process.o: userprog/process.c 
 	$(CC) $(CFLAGS) $< -o $@
 
 # assembly	

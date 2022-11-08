@@ -236,6 +236,7 @@ static void intr_keyboard_handler(void) {
 void keyboard_init(void) {
     put_str("keyboard init start\n");
     ioq_init(&kbd_buf);
+    put_str("   ");
     intr_handler_register(0x21, intr_keyboard_handler);
     put_str("keyboard init done\n");
 }

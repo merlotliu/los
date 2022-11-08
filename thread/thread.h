@@ -1,8 +1,13 @@
 #ifndef __THREAD_THREAD_H
 #define __THREAD_THREAD_H
 
-#include "stdint.h"
 #include "list.h"
+#include "string.h"
+#include "global.h"
+#include "memory.h"
+
+#define THREAD_PRIORITY_DEFAULT 10
+#define MAIN_THREAD_PRIORITY 	31
 
 /* general thread function type */
 typedef void thread_func(void*);
@@ -24,6 +29,7 @@ enum task_status {
  */
 struct intr_stack {
 	uint32_t vec_no; /* interrupt vector number */
+	//[1] pushad & popad
 	uint32_t edi;
 	uint32_t esi;
 	uint32_t ebp;
@@ -32,6 +38,8 @@ struct intr_stack {
 	uint32_t edx;
 	uint32_t ecx;
 	uint32_t eax;
+	//![1]
+
 	uint32_t gs;
 	uint32_t fs;
 	uint32_t es;
@@ -43,7 +51,7 @@ struct intr_stack {
 	uint32_t cs;
 	uint32_t eflags;
 	void* esp;
-	uint32_t ss;
+	uint32_t ss; /* 栈段 */
 };
 
 /************* Thread Stack *************
@@ -80,7 +88,8 @@ struct task_ctl_blk {
 	/* 标识线程，加入到全部线程队列 */
 	struct list_elem all_list_tag;
 	uint32_t* pgdir; /* 进程自己页表的虚拟地址，线程为 NULL */
-	uint32_t stack_magic; /* 栈边界标记，用于检测栈溢出 */
+	struct vaddr_mem_pool userprog_vaddr_mem_pool; /* 用户进程虚拟地址 */
+	uint32_t stack_magic; /* 定义的魔数，如果该值被覆盖，说明溢出 */
 };
 /* 获取当前线程 PCB 指针 */
 struct task_ctl_blk* thread_running(void);

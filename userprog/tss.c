@@ -65,15 +65,14 @@ void tss_init(void) {
     tss.io_base = tss_size; /* no io bitmap */
     
     /* GDT base address is 0x900. tss is the 4.(0x900 + 0x20) */
-    gdt_desc_t *tss_addr_base = (gdt_desc_t *)TSS_ADDR_BASE;
     /* dpl0's TSS */
-    *(tss_addr_base) = gdt_desc_make((uint32_t*)&tss, tss_size - 1, TSS_ATTR_LOW, TSS_ATTR_HIGH);
+    *((gdt_desc_t *)TSS_ADDR_BASE) = gdt_desc_make((uint32_t*)&tss, tss_size - 1, TSS_ATTR_LOW, TSS_ATTR_HIGH);
     /* dpl3's user data & code segment */
-    *(tss_addr_base + GDT_DESC_SIZE) = gdt_desc_make((uint32_t*)0, 0xfffff, GDT_CODE_ATTR_LOW_DPL3, GDT_ATTR_HIGH);
-    *(tss_addr_base + 2 * GDT_DESC_SIZE) = gdt_desc_make((uint32_t*)0, 0xfffff, GDT_DATA_ATTR_LOW_DPL3, GDT_ATTR_HIGH);
+    *((gdt_desc_t *)(TSS_ADDR_BASE + GDT_DESC_SIZE)) = gdt_desc_make((uint32_t*)0, 0xfffff, GDT_CODE_ATTR_LOW_DPL3, GDT_ATTR_HIGH);
+    *((gdt_desc_t *)(TSS_ADDR_BASE + 2 * GDT_DESC_SIZE))  = gdt_desc_make((uint32_t*)0, 0xfffff, GDT_DATA_ATTR_LOW_DPL3, GDT_ATTR_HIGH);
     
     /* gdt [16 bit's limit][32 bit's segment address] */
-    uint64_t gdt_operand = ((GDT_DESC_SIZE * 7 - 1) | (((uint64_t)(uint32_t)GDT_ADDR_BASE) << 16));
+    uint64_t gdt_operand = ((GDT_DESC_SIZE * 7 - 1) | ((uint64_t)(uint32_t)GDT_ADDR_BASE << 16));
     /* reload gdt */
     asm volatile("lgdt %0": : "m" (gdt_operand));
     asm volatile("ltr %w0": : "r" (SELECTOR_TSS));

@@ -51,7 +51,7 @@ static void timer_intr_handler(void) {
     struct task_ctl_blk* cur_thread = thread_running();
     
     /* 判断栈是否溢出 */
-    ASSERT(0x19870916 == cur_thread->stack_magic);
+    ASSERT(0x19990926 == cur_thread->stack_magic);
     
     cur_thread->elapsed_ticks++;
     ticks++;

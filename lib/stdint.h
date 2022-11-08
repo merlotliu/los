@@ -11,10 +11,4 @@ typedef unsigned short int uint16_t;
 typedef unsigned int uint32_t;
 typedef unsigned long long int uint64_t;
 
-enum bool_ {
-    false = 0,
-    true = 1
-};
-typedef enum bool_ bool;
-
 #endif /* __LIB_STDINT_H */

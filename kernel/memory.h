@@ -1,10 +1,8 @@
 #ifndef __KERNEL_MEMORY_H
 #define __KERNEL_MEMORY_H
 
-#include "stdint.h"
+#include "global.h"
 #include "bitmap.h"
-
-#define PG_SIZE 4096
 
 enum mem_pool_flags {
     MPF_KERNEL = 1, /* kernel memory pool */
@@ -54,5 +52,24 @@ void* malloc_page(enum mem_pool_flags mpf, uint32_t pg_cnt);
  * @return: 成功返回内存首地址，失败返回 NULL
  */
 void* get_kernel_pages(uint32_t pg_cnt);
+
+/*
+ * @brief: 申请 pg_cnt 个页的内核物理地址
+ * @return: 成功返回内存首地址，失败返回 NULL
+ */
+void* get_user_pages(uint32_t pg_cnt);
+
+/*
+ * @brief: 将虚拟地址 vaddr 与 mpf 池中物理地址相关联
+ *  1. 获取物理内存池根据 mpf；
+ *  2. 将当前虚拟地址位图置 1；
+ *  3. 用户进程申请修改用户虚拟地址位图，内核进程申请则修改内核虚拟地址位图；
+ *  4. 申请在 mpf 物理内存池申请一页物理内存；
+ *  5. 将虚拟页映射到申请到的物理内存；
+ */
+void* get_a_page(enum mem_pool_flags mpf, uint32_t vaddr);
+
+/* get physical address which virtual address mapped */
+uint32_t addr_v2p(uint32_t vaddr);
 
 #endif /* __KERNEL_MEMORY_H */

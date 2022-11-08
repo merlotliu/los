@@ -1,14 +1,9 @@
 #include "thread.h"
-#include "stdint.h"
-#include "string.h"
-#include "global.h"
-#include "memory.h"
 #include "interrupt.h"
 #include "debug.h"
 #include "print.h"
 #include "list.h"
-
-#define MAIN_THREAD_PRIORITY 31
+#include "process.h"
 
 struct task_ctl_blk* main_thread; /* main thread PCB */
 struct list thread_ready_list; /* ready tasks queue */
@@ -64,13 +59,14 @@ void thread_attr_init(struct task_ctl_blk* pthread, char* name, int priority) {
     pthread->ticks = priority;
     pthread->elapsed_ticks = 0;
     pthread->pgdir = NULL;
-    pthread->stack_magic = 0x19870916; /* 暂时用不到，随便自定义魔数 */
+    pthread->stack_magic = 0x19990926; /* 定义的魔数，如果该值被覆盖，说明溢出 */
 }
 
 /* 创建优先级为 prio 名为 name 的线程，执行函数为 func(func_arg) */
 struct task_ctl_blk* thread_start(char* name, int priority, thread_func* func, void* func_arg) {
     /* pcb 都位于内核空间，包括用户进程的 pcb 也是在内核空间 */
     struct task_ctl_blk* thread = get_kernel_pages(1);
+    
     thread_attr_init(thread, name, priority);
     thread_create(thread, func, func_arg);
 
@@ -139,6 +135,7 @@ void schedule(void) {
 
         list_push_back(&thread_ready_list, &cur_tcb->general_tag);
         cur_tcb->ticks = cur_tcb->priority; /* 重置时间片为 priority */
+        cur_tcb->status = TASK_READY;
     } else {
         /* 不是时间片到下 CPU，不加入就绪队列，此时没有进行任何操作 */
     }
@@ -153,6 +150,15 @@ void schedule(void) {
     struct task_ctl_blk* next_tcb =\
         elem2entry(struct task_ctl_blk, general_tag, thread_tag);
     next_tcb->status = TASK_RUNNING;
+
+    /* activate task page table ... */
+    process_activate(next_tcb);
+
+    // struct list_elem* elem = &thread_ready_list.head;
+    // while(elem != &thread_ready_list.tail) {
+    //     put_int((uint32_t)elem2entry(struct task_ctl_blk, general_tag, elem));
+    //     elem = elem->next;
+    // }
 
     switch_to(cur_tcb, next_tcb);
 }
