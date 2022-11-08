@@ -47,6 +47,7 @@ intr_exit:
     add esp, 4 ; skip error_code
     iretd
 
+; general int
 VECTOR 0x00, ZERO
 VECTOR 0x01, ZERO
 VECTOR 0x02, ZERO
@@ -95,3 +96,37 @@ VECTOR 0x2c, ZERO ; ps/2 鼠标
 VECTOR 0x2d, ZERO ; fpu 浮点单元异常
 VECTOR 0x2e, ZERO ; hard disk
 VECTOR 0x2f, ZERO ; reserve
+
+; ################# 0x80 int ##################
+[bits 32]
+extern syscall_table
+section .text
+    global syscall_handler
+syscall_handler:
+    ; 1. 保存上下文
+    push 0 ; 统一格式 error no
+
+    push ds
+    push ds
+    push es
+    push gs
+    pushad
+
+    push 0x80 ; 统一格式 vector no
+    
+    ; 2. 为系统调用子功能传入参数
+    push edx 
+    push ecx 
+    push ebx 
+
+    ; 3. 调用子功能处理函数
+    call [syscall_table + eax*4]
+    add esp, 12
+
+    ; 4. 将 call 调用后的返回值存入当前内核栈中 eax 的位置
+    ; eax 在 pushad 的第一个压栈 加上 push 0x80 一共需要越过 8 * 4 字节
+    ; eax 存放的是 int 0x80 的返回值
+    ; 也就是 eax 给栈内的 eax 赋值，intr_exit 栈内 eax 出栈再给 eax 赋值
+    ; 根据我们的 _syscall 宏函数最后 eax 会赋值给返回值返回
+    mov [esp + 8 * 4], eax
+    jmp intr_exit

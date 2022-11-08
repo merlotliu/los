@@ -4,7 +4,7 @@
 #include "io.h"
 #include "print.h"
 
-#define IDT_DESC_CNT 0x30 /* curent interrput handler count */
+#define IDT_DESC_CNT 0x81 /* curent interrput handler count */
 #define PIC_M_CTRL 0x20 /* master control port */
 #define PIC_M_DATA 0x21 /* master data port */
 #define PIC_S_CTRL 0xa0 /* slave control port */
@@ -34,6 +34,8 @@ char* intr_name[IDT_DESC_CNT];
 intr_handler idt_table[IDT_DESC_CNT]; 
 /* intr_entry_table just a entry */
 extern intr_handler intr_entry_table[IDT_DESC_CNT]; 
+/* syscall handler */
+extern uint32_t syscall_handler(void);
 
 /* create idt descriptor */
 static void make_idt_desc(struct gate_desc* p_gdesc, uint8_t attr, intr_handler function) {
@@ -50,6 +52,9 @@ static void idt_desc_init(void) {
     for(i = 0; i < IDT_DESC_CNT; i++) {
         make_idt_desc(&idt[i], IDT_DESC_ATTR_DPL0, intr_entry_table[i]);
     }
+
+    /* 0x80 system call handler */
+    make_idt_desc(&idt[IDT_DESC_CNT - 1], IDT_DESC_ATTR_DPL3, syscall_handler);
     put_str("   idt_desc_init done\n");
 }
 

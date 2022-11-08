@@ -42,8 +42,8 @@ void process_start(void *filename_) {
 
     proc_stack->ss = SELECTOR_U_DATA;
 
-    put_int((uint32_t)cur_thread);
-    put_str("\n");
+    // put_int((uint32_t)cur_thread);
+    // put_str("\n");
 
     asm volatile("movl %0, %%esp; jmp intr_exit" : : "g" (proc_stack) : "memory");
 }   

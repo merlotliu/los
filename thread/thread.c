@@ -4,11 +4,13 @@
 #include "print.h"
 #include "list.h"
 #include "process.h"
+#include "sync.h"
 
 struct task_ctl_blk* main_thread; /* main thread PCB */
 struct list thread_ready_list; /* ready tasks queue */
 struct list thread_all_list; /* all tasks queue */
 static struct list_elem* thread_tag; /* thread node of queue */
+locker_t pid_locker; /* pid locker */
 
 extern void switch_to(struct task_ctl_blk* cur, struct task_ctl_blk* next);
 
@@ -24,6 +26,15 @@ struct task_ctl_blk* thread_running(void) {
 static void kernel_thread(thread_func* func, void* func_arg) {
     intr_enable(); /* 避免因中断关闭而无法调度其他线程 */
     func(func_arg);
+}
+
+/* allocate pid */
+static pid_t allocate_pid(void) {
+    static pid_t next_pid = 0;
+    locker_lock(&pid_locker);
+    next_pid++;
+    locker_unlock(&pid_locker);
+    return next_pid;
 }
 
 /* 初始化线程栈 thread_stack，将待执行的参数放在对应位置 */
@@ -46,6 +57,7 @@ void thread_create(struct task_ctl_blk* pthread, thread_func func, void* func_ar
 /* 初始化线程基本信息 */
 void thread_attr_init(struct task_ctl_blk* pthread, char* name, int priority) {
     memset(pthread, 0, sizeof(*pthread));
+    pthread->pid = allocate_pid();
     strcpy(pthread->name, name);
 
     if(pthread == main_thread) {
@@ -169,6 +181,8 @@ void thread_env_init(void) {
     
     list_init(&thread_ready_list);
     list_init(&thread_all_list);
+    
+    locker_init(&pid_locker);
 
     make_main_thread();
     put_str("thread_init done\n");

@@ -12,6 +12,8 @@
 /* general thread function type */
 typedef void thread_func(void*);
 
+typedef int16_t pid_t;
+
 /* process & thread status */
 enum task_status {
 	TASK_RUNNING, /* running */
@@ -76,6 +78,7 @@ struct thread_stack {
 /* 进程或线程的 PCB */
 struct task_ctl_blk {
 	uint32_t* self_kstack; /* 各内核线程都用自己的内核栈 */
+	pid_t pid;
 	enum task_status status; 
 	char name[16];
 	uint8_t priority; /* 线程优先级，优先级越高，时间片越长 */

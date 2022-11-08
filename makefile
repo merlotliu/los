@@ -28,7 +28,9 @@ OBJS		= 	$(BUILD_DIR)/main.o \
 				$(BUILD_DIR)/keyboard.o \
 				$(BUILD_DIR)/ioqueue.o \
 				$(BUILD_DIR)/tss.o \
-				$(BUILD_DIR)/process.o
+				$(BUILD_DIR)/process.o \
+				$(BUILD_DIR)/syscall_init.o \
+				$(BUILD_DIR)/syscall.o
 
 # C
 # kernel
@@ -76,6 +78,10 @@ $(BUILD_DIR)/bitmap.o: lib/kernel/bitmap.c
 $(BUILD_DIR)/list.o: lib/kernel/list.c 
 	$(CC) $(CFLAGS) $< -o $@
 
+# lib/user
+$(BUILD_DIR)/syscall.o: lib/user/syscall.c
+	$(CC) $(CFLAGS) $< -o $@
+
 # thread
 $(BUILD_DIR)/thread.o: thread/thread.c 
 	$(CC) $(CFLAGS) $< -o $@
@@ -88,6 +94,9 @@ $(BUILD_DIR)/tss.o: userprog/tss.c
 	$(CC) $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/process.o: userprog/process.c 
+	$(CC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/syscall_init.o: userprog/syscall_init.c
 	$(CC) $(CFLAGS) $< -o $@
 
 # assembly	
