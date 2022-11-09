@@ -7,7 +7,11 @@ LD 			= ld
 LIB 		= -I kernel/ -I device/ -I thread/ -I userprog/ -I lib/ -I lib/kernel -I lib/user/ 
 
 ASFLAGS 	= -f elf
-CFLAGS		= -m32 -Wall $(LIB) -c -fno-builtin -W -Wstrict-prototypes -Wmissing-prototypes
+CFLAGS		= -m32 -Wall $(LIB) -c	-W\
+				-fno-builtin\
+				-Wstrict-prototypes\
+				-Wmissing-prototypes # -fno-stack-protector
+
 LDFLAGS		= -m elf_i386 -Ttext $(ENTRY_POINT) -e main -Map $(BUILD_DIR)/kernel.map
 
 OBJS		= 	$(BUILD_DIR)/main.o \
@@ -30,7 +34,8 @@ OBJS		= 	$(BUILD_DIR)/main.o \
 				$(BUILD_DIR)/tss.o \
 				$(BUILD_DIR)/process.o \
 				$(BUILD_DIR)/syscall_init.o \
-				$(BUILD_DIR)/syscall.o
+				$(BUILD_DIR)/syscall.o \
+				$(BUILD_DIR)/stdio.o
 
 # C
 # kernel
@@ -69,6 +74,9 @@ $(BUILD_DIR)/ioqueue.o: device/ioqueue.c
 
 # lib
 $(BUILD_DIR)/string.o: lib/string.c 
+	$(CC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/stdio.o: lib/stdio.c 
 	$(CC) $(CFLAGS) $< -o $@
 
 # lib/kernel
