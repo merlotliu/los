@@ -6,20 +6,23 @@
 #include "process.h"
 #include "sync.h"
 
-struct task_ctl_blk* main_thread; /* main thread PCB */
+struct task_struct* main_thread; /* main thread PCB */
+struct task_struct* idle_thread; /* idle thread PCB */
 struct list thread_ready_list; /* ready tasks queue */
 struct list thread_all_list; /* all tasks queue */
 static struct list_elem* thread_tag; /* thread node of queue */
 locker_t pid_locker; /* pid locker */
 
-extern void switch_to(struct task_ctl_blk* cur, struct task_ctl_blk* next);
+
+
+extern void switch_to(struct task_struct* cur, struct task_struct* next);
 
 /* 获取当前线程 PCB 指针 */
-struct task_ctl_blk* thread_running(void) {
+struct task_struct* thread_running(void) {
     uint32_t esp;
     asm ("mov %%esp, %0" : "=g" (esp));
     /* 高 20 位即为 PCB 地址 */
-    return (struct task_ctl_blk*)(esp & 0xfffff000);
+    return (struct task_struct*)(esp & 0xfffff000);
 }
 
 /* kernel_thread call func(func_arg) */
@@ -38,7 +41,7 @@ static pid_t allocate_pid(void) {
 }
 
 /* 初始化线程栈 thread_stack，将待执行的参数放在对应位置 */
-void thread_create(struct task_ctl_blk* pthread, thread_func func, void* func_arg) { 
+void thread_create(struct task_struct* pthread, thread_func func, void* func_arg) { 
     /* 预留出中断栈和线程栈的空间 */
     pthread->self_kstack -= sizeof(struct intr_stack);
     pthread->self_kstack -= sizeof(struct thread_stack);
@@ -55,7 +58,7 @@ void thread_create(struct task_ctl_blk* pthread, thread_func func, void* func_ar
 }
 
 /* 初始化线程基本信息 */
-void thread_attr_init(struct task_ctl_blk* pthread, char* name, int priority) {
+void thread_attr_init(struct task_struct* pthread, char* name, int priority) {
     memset(pthread, 0, sizeof(*pthread));
     pthread->pid = allocate_pid();
     strcpy(pthread->name, name);
@@ -75,9 +78,9 @@ void thread_attr_init(struct task_ctl_blk* pthread, char* name, int priority) {
 }
 
 /* 创建优先级为 prio 名为 name 的线程，执行函数为 func(func_arg) */
-struct task_ctl_blk* thread_start(char* name, int priority, thread_func* func, void* func_arg) {
+struct task_struct* thread_start(char* name, int priority, thread_func* func, void* func_arg) {
     /* pcb 都位于内核空间，包括用户进程的 pcb 也是在内核空间 */
-    struct task_ctl_blk* thread = get_kernel_pages(1);
+    struct task_struct* thread = get_kernel_pages(1);
     
     thread_attr_init(thread, name, priority);
     thread_create(thread, func, func_arg);
@@ -97,7 +100,7 @@ void thread_block(enum task_status stat) {
     ASSERT((TASK_BLOCKED == stat) || (TASK_WAITING == stat) || (TASK_HANGING == stat));
     enum intr_status old_stat = intr_disable();
 
-    struct task_ctl_blk* cur_tcb = thread_running();
+    struct task_struct* cur_tcb = thread_running();
     cur_tcb->status = stat;
     schedule();
 
@@ -105,7 +108,7 @@ void thread_block(enum task_status stat) {
 }
 
 /* wakeup blocked thread */
-void thread_unblock(struct task_ctl_blk* pthread) {
+void thread_unblock(struct task_struct* pthread) {
     ASSERT((TASK_BLOCKED == pthread->status) || (TASK_WAITING == pthread->status) || (TASK_HANGING == pthread->status));
     enum intr_status old_stat = intr_disable();
 
@@ -118,6 +121,19 @@ void thread_unblock(struct task_ctl_blk* pthread) {
         pthread->status = TASK_READY;
     }
 
+    intr_status_set(old_stat);
+}
+
+/* 主动让出 CPU 切换其他线程 */
+void thread_yield(void) {
+    enum intr_status old_stat = intr_disable();
+
+    struct task_struct* cur_thread = thread_running();
+    ASSERT(!elem_find(&thread_ready_list, &cur_thread->general_tag));
+    list_push_back(&thread_ready_list, &cur_thread->general_tag);
+    cur_thread->status = TASK_READY;
+    schedule();
+    
     intr_status_set(old_stat);
 }
 
@@ -135,11 +151,20 @@ static void make_main_thread(void) {
     list_push_back(&thread_all_list, &main_thread->all_list_tag);
 }
 
+/* 系统空闲时运行的线程 */
+static void idle(void* arg UNUSED) {
+    while(1) {
+        thread_block(TASK_BLOCKED);
+        /* 开中断执行 hlt */
+        asm volatile("sti; hlt" : : : "memory");
+    }
+}
+
 /* task schedule */
 void schedule(void) {
     ASSERT(intr_status_get() == INTR_OFF);
     /* 主要任务：将当前线程下处理器，并在就绪队列中找到下一个可运行的执行流，换上处理器 */
-    struct task_ctl_blk* cur_tcb = thread_running();
+    struct task_struct* cur_tcb = thread_running();
     if(cur_tcb->status == TASK_RUNNING) {
         /* 时间片到，加入就绪队列尾部 */
 
@@ -152,15 +177,19 @@ void schedule(void) {
         /* 不是时间片到下 CPU，不加入就绪队列，此时没有进行任何操作 */
     }
     
-    /* 暂时用该语句保证就绪队列不为空 */
-    ASSERT(!list_empty(&thread_ready_list));
-    
+    // /* 暂时用该语句保证就绪队列不为空 */
+    // ASSERT(!list_empty(&thread_ready_list));
+    /* 没有可运行的任务，则执行 idle */
+    if(list_empty(&thread_ready_list)) {
+        thread_unblock(idle_thread);
+    }
+
     /* 从就绪队列获取一个 tcb，但因为其中存的是 list_elem 需要转化为 tcb 的地址 */
     thread_tag = NULL;
     thread_tag = list_pop(&thread_ready_list);
     /* elem to tcb */
-    struct task_ctl_blk* next_tcb =\
-        elem2entry(struct task_ctl_blk, general_tag, thread_tag);
+    struct task_struct* next_tcb =\
+        elem2entry(struct task_struct, general_tag, thread_tag);
     next_tcb->status = TASK_RUNNING;
 
     /* activate task page table ... */
@@ -168,7 +197,7 @@ void schedule(void) {
 
     // struct list_elem* elem = &thread_ready_list.head;
     // while(elem != &thread_ready_list.tail) {
-    //     put_int((uint32_t)elem2entry(struct task_ctl_blk, general_tag, elem));
+    //     put_int((uint32_t)elem2entry(struct task_struct, general_tag, elem));
     //     elem = elem->next;
     // }
 
@@ -184,6 +213,11 @@ void thread_env_init(void) {
     
     locker_init(&pid_locker);
 
+    /* 当前 main 函数设置为主线程 */
     make_main_thread();
+
+    /* 创建 idle 线程 */
+    idle_thread = thread_start("idle", IDLE_THREAD_PRIORITY, idle, NULL);
+
     put_str("thread_init done\n");
 }

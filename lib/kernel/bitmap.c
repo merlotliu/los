@@ -65,7 +65,6 @@ int bitmap_scan(struct bitmap* btmp, int32_t cnt) {
             if(cnt >= bit_left_cnt) {
                 break;
             }
-            continue;
         } else {
             count++;
         }

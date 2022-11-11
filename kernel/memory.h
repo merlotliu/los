@@ -3,7 +3,12 @@
 
 #include "global.h"
 #include "bitmap.h"
+#include "list.h"
 
+typedef struct list_elem list_elem_t;
+typedef struct list list_t;
+
+/* memory pool flags(kernel or user) */
 enum mem_pool_flags {
     MPF_KERNEL = 1, /* kernel memory pool */
     MPF_USER = 2 /* user memory pool */
@@ -22,12 +27,22 @@ struct vaddr_mem_pool {
     uint32_t vaddr_start; /* virtual address start */
 };
 
-extern struct pool kernel_pool, user_pool;
+/* memory block */
+typedef struct {
+    list_elem_t free_elem;
+}mem_bck_t;
 
-/*
- * @brief: entry of init memory manager
- */
-void mem_init(void);
+/* memory block descriptor */
+typedef struct {
+    uint32_t bck_size; /* per block size */
+    uint32_t bcks_per_arena; /* total blocks of current arena */
+    list_t free_list;
+} mem_bck_desc_t;
+
+/* memory block descriptor stardard : 16 32 64 128 256 512 1024 */
+#define MEM_DESC_CNT 7 
+
+// extern struct paddr_mem_pool kernel_phy_pool, user_phy_pool;
 
 /*
  * @brief: get virtual address vaddr's pde pointer (virtual address)
@@ -71,5 +86,25 @@ void* get_a_page(enum mem_pool_flags mpf, uint32_t vaddr);
 
 /* get physical address which virtual address mapped */
 uint32_t addr_v2p(uint32_t vaddr);
+
+/* 堆中申请size字节的内存 */
+void* sys_malloc(uint32_t size);
+
+/* 初始化所有规格的内存块 */
+void bck_desc_init(mem_bck_desc_t* desc_array);
+
+/* 将物理地址会受到物理内存池 */
+void pfree(uint32_t pg_phy_addr);
+
+/* 释放以虚拟地址 vaddr 起始的 cnt 个物理页框 */
+void mfree_page(enum mem_pool_flags mpf, void* _vaddr, uint32_t pg_cnt);
+
+/* 回收内存 ptr */
+void sys_free(void* ptr);
+
+/*
+ * @brief: entry of init memory manager
+ */
+void mem_init(void);
 
 #endif /* __KERNEL_MEMORY_H */

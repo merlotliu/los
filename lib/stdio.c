@@ -2,13 +2,6 @@
 
 static char buf[1024];
 
-/* ap point to first arg v */
-#define va_start(ap, v) (ap = (va_list)&v)
-/* ap point to next arg */
-#define va_arg(ap, t) (*((t*)(ap += 4)))
-/* clear ap */
-#define va_end(ap) (ap = NULL)
-
 /* integer to ascii */
 static void itoa(uint32_t val, char** buf, uint8_t base) {
     uint32_t m = val % base;

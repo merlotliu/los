@@ -6,7 +6,7 @@
 #include "string.h"
 
 /* update esp0 of tss to pthread's stack(level 0) */
-void tss_update_esp(struct task_ctl_blk* pthread);
+void tss_update_esp(struct task_struct* pthread);
 
 /* create tss in GDT & reload gdt */
 void tss_init(void);

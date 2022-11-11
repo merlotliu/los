@@ -14,7 +14,7 @@ extern struct list thread_all_list; /* all tasks queue */
 
 /* 构建用户进程初始上下文信息 */
 void process_start(void *filename_) {
-    struct task_ctl_blk* cur_thread = thread_running();
+    struct task_struct* cur_thread = thread_running();
 
     cur_thread->self_kstack += sizeof(struct thread_stack);
     struct intr_stack* proc_stack = (struct intr_stack*)(cur_thread->self_kstack);
@@ -49,7 +49,7 @@ void process_start(void *filename_) {
 }   
 
 /* 为进程重新加载页目录表，以激活进程页表 */
-void page_dir_activate(struct task_ctl_blk* pthread) {
+void page_dir_activate(struct task_struct* pthread) {
     /* 无论是线程还是进程都需要重新安装页表，防止线程使用进程的页表 */
     /* 默认为内核页目录表（物理地址 0x100000） */
     uint32_t phy_page_dir_addr = 0x100000;
@@ -62,7 +62,7 @@ void page_dir_activate(struct task_ctl_blk* pthread) {
 }
 
 /* 重新加载页目录项，激活页表，更新 tss 中的 esp0 为进程的特权级 0 的栈 */
-void process_activate(struct task_ctl_blk* pthread) {
+void process_activate(struct task_struct* pthread) {
     ASSERT(pthread != NULL);
     page_dir_activate(pthread);
     /* 内核线程不需要更新，用户进程才需要更新 */
@@ -92,7 +92,7 @@ uint32_t* page_dir_create(void) {
 }
 
 /* 创建用户进程虚拟地址位图 */
-void user_vaddr_bitmap_create(struct task_ctl_blk* user_prog) {
+void user_vaddr_bitmap_create(struct task_struct* user_prog) {
     user_prog->userprog_vaddr_mem_pool.vaddr_start = USER_VADDR_START;
     uint32_t bitmap_pg_cnt = DIV_ROUND_UP((0xc0000000 - USER_VADDR_START) / PG_SIZE / 8, PG_SIZE);
     user_prog->userprog_vaddr_mem_pool.vaddr_bitmap.bits = get_kernel_pages(bitmap_pg_cnt);
@@ -102,11 +102,12 @@ void user_vaddr_bitmap_create(struct task_ctl_blk* user_prog) {
 
 /* 创建用户进程 */
 void process_execute(void* filename, char* name) {
-    struct task_ctl_blk* pthread = get_kernel_pages(1);
+    struct task_struct* pthread = get_kernel_pages(1);
     thread_attr_init(pthread, name, THREAD_PRIORITY_DEFAULT);
     user_vaddr_bitmap_create(pthread);
     thread_create(pthread, process_start, filename);
     pthread->pgdir = page_dir_create();
+    bck_desc_init(pthread->u_bck_descs);
 
     enum intr_status old_stat = intr_disable();
 

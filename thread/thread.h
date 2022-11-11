@@ -7,6 +7,7 @@
 #include "memory.h"
 
 #define THREAD_PRIORITY_DEFAULT 10
+#define IDLE_THREAD_PRIORITY 	10
 #define MAIN_THREAD_PRIORITY 	31
 
 /* general thread function type */
@@ -76,7 +77,7 @@ struct thread_stack {
 };
 
 /* 进程或线程的 PCB */
-struct task_ctl_blk {
+struct task_struct {
 	uint32_t* self_kstack; /* 各内核线程都用自己的内核栈 */
 	pid_t pid;
 	enum task_status status; 
@@ -92,25 +93,26 @@ struct task_ctl_blk {
 	struct list_elem all_list_tag;
 	uint32_t* pgdir; /* 进程自己页表的虚拟地址，线程为 NULL */
 	struct vaddr_mem_pool userprog_vaddr_mem_pool; /* 用户进程虚拟地址 */
+	mem_bck_desc_t u_bck_descs[MEM_DESC_CNT];
 	uint32_t stack_magic; /* 定义的魔数，如果该值被覆盖，说明溢出 */
 };
 /* 获取当前线程 PCB 指针 */
-struct task_ctl_blk* thread_running(void);
+struct task_struct* thread_running(void);
 
 /* 初始化线程栈 thread_stack，将待执行的参数放在对应位置 */
-void thread_create(struct task_ctl_blk* pthread, thread_func func, void* func_arg);
+void thread_create(struct task_struct* pthread, thread_func func, void* func_arg);
 
 /* 初始化线程基本信息 */
-void thread_attr_init(struct task_ctl_blk* pthread, char* name, int priority);
+void thread_attr_init(struct task_struct* pthread, char* name, int priority);
 
 /* 创建优先级为 prio 名为 name 的线程，执行函数为 func(func_arg) */
-struct task_ctl_blk* thread_start(char* name, int priority, thread_func* func, void* func_arg);
+struct task_struct* thread_start(char* name, int priority, thread_func* func, void* func_arg);
 
 /* thread block */
 void thread_block(enum task_status stat);
 
 /* wakeup blocked thread */
-void thread_unblock(struct task_ctl_blk* pthread);
+void thread_unblock(struct task_struct* pthread);
 
 /* task schedule */
 void schedule(void);
