@@ -35,8 +35,8 @@ void sem_post(sem_t *psem) {
     
     if(!list_empty(&psem->waiters)) {
 
-        struct task_ctl_blk* thread_blocked = 
-            elem2entry(struct task_ctl_blk, general_tag, list_pop(&psem->waiters));
+        struct task_struct* thread_blocked = 
+            elem2entry(struct task_struct, general_tag, list_pop(&psem->waiters));
         thread_unblock(thread_blocked);    
     }
     psem->value++;

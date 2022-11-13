@@ -4,6 +4,7 @@
 #include "stdint.h"
 
 #define NULL            ((void*)0)
+#define UNUSED          __attribute__((unused))
 #define PG_SIZE         4096
 #define bool            int
 #define true            1

@@ -11,8 +11,8 @@
 typedef struct {
     locker_t locker;
     /* producer & consumer */
-    struct task_ctl_blk *producer;
-    struct task_ctl_blk *consumer;
+    struct task_struct *producer;
+    struct task_struct *consumer;
 
     char buf[IO_QUEUE_BUFFER_SIZE];
     int32_t head; /* index of buffer */

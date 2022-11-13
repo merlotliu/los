@@ -28,7 +28,7 @@ void sem_post(sem_t *psem);
  ************************************************/
 /* locker struct */
 typedef struct {
-    struct task_ctl_blk *holder; /* locker holder */
+    struct task_struct *holder; /* locker holder */
     uint32_t holder_repeat_nr; /* holder repeat apply count */
     sem_t sem; /* binary semaphore */
 }locker_t;

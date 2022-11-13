@@ -107,7 +107,7 @@ static char keymap [][2] = {
 
 static void intr_keyboard_handler(void) {
     
-    bool ctrl_down_last = ctrl_status;
+    bool UNUSED ctrl_down_last = ctrl_status;
     bool shift_down_last = shift_status;
     bool capslock_last = capslock_status;
     

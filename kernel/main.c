@@ -35,8 +35,8 @@ int main(void) {
     // console_put_int(sys_getpid());
     // console_put_str("\n");
 
-    thread_start("k_thread_a", 31, k_thread_aa, "    KThrdA");
-    thread_start("k_thread_b", 31, k_thread_bb, "    KThrdB");
+    // thread_start("k_thread_a", 31, k_thread_aa, "    KThrdA");
+    // thread_start("k_thread_b", 31, k_thread_bb, "    KThrdB");
 
     while(1) {
         // console_put_str("Main ");
@@ -44,7 +44,7 @@ int main(void) {
     return 0;
 }
 
-void k_thread_a(void* arg) {
+void k_thread_a(void* arg UNUSED) {
     void* addr1 = sys_malloc(256 ) ;
     void* addr2 = sys_malloc(255 ) ;
     void* addr3 = sys_malloc(254);
@@ -63,7 +63,7 @@ void k_thread_a(void* arg) {
     while(1); 
 }   
 
-void k_thread_b(void* arg) {
+void k_thread_b(void* arg UNUSED) {
     void* addr1 = sys_malloc(256 ) ;
     void* addr2 = sys_malloc(255 ) ;
     void* addr3 = sys_malloc(254);
@@ -82,8 +82,7 @@ void k_thread_b(void* arg) {
     while(1); 
 }   
 
-void k_thread_aa(void* arg) {
-    char* param = arg;
+void k_thread_aa(void* arg UNUSED) {
     void* addr1;
     void* addr2;
     void* addr3;
@@ -129,8 +128,8 @@ void k_thread_aa(void* arg) {
     // while(1);
 }
 
-void k_thread_bb(void* arg) {
-    char* param = arg;
+void k_thread_bb(void* arg UNUSED) {
+    // char* param = arg;
     void* addr1;
     void* addr2;
     void* addr3;

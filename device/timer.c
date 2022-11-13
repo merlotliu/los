@@ -21,6 +21,9 @@
 #define PIT_BCD_1           1
 #define PIT_CONTROL_PORT    0x43
 
+/* 多少 ms 发生一次中断 */
+#define MIL_SECONDS_PER_INTR (1000 / IRQ0_FREQUENCY)
+
 /* ticks内核开中断以来总共的嘀嗒数，类似系统时长 */
 uint32_t ticks = 0; 
 
@@ -48,7 +51,7 @@ static void set_frequency(uint8_t counter_port,
 
 /* timer interrupt handler */
 static void timer_intr_handler(void) {
-    struct task_ctl_blk* cur_thread = thread_running();
+    struct task_struct* cur_thread = thread_running();
     
     /* 判断栈是否溢出 */
     ASSERT(0x19990926 == cur_thread->stack_magic);
@@ -61,6 +64,22 @@ static void timer_intr_handler(void) {
     } else {
         cur_thread->ticks--;
     }
+}
+
+/* 以 tick 为单位的 sleep， 任何时间形式的 sleep 都会转化为 ticks 形式 */
+static void ticks_to_sleep(uint32_t sleep_ticks) {
+    uint32_t tick_start = ticks;
+    /* 间隔时长不够则让出 CPU */
+    while(ticks - tick_start < sleep_ticks) {
+        thread_yield();
+    }
+}
+
+/* 以毫秒为单位的 sleep， 1s = 1000ms */
+void mtime_sleep(uint32_t m_seconds) {
+    uint32_t sleep_ticks = DIV_ROUND_UP(m_seconds, MIL_SECONDS_PER_INTR);
+    ASSERT(sleep_ticks > 0);
+    ticks_to_sleep(sleep_ticks);
 }
 
 /* init PIT */

@@ -94,8 +94,8 @@ VECTOR 0x2a, ZERO ; reserve
 VECTOR 0x2b, ZERO ; reserve
 VECTOR 0x2c, ZERO ; ps/2 鼠标
 VECTOR 0x2d, ZERO ; fpu 浮点单元异常
-VECTOR 0x2e, ZERO ; hard disk
-VECTOR 0x2f, ZERO ; reserve
+VECTOR 0x2e, ZERO ; hard disk （ide0）
+VECTOR 0x2f, ZERO ; hard disk （ide1）
 
 ; ################# 0x80 int ##################
 [bits 32]

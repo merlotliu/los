@@ -10,7 +10,8 @@ ASFLAGS 	= -f elf
 CFLAGS		= -m32 -Wall $(LIB) -c	-W\
 				-fno-builtin\
 				-Wstrict-prototypes\
-				-Wmissing-prototypes # -fno-stack-protector
+				-Wmissing-prototypes\
+				-fno-stack-protector
 
 LDFLAGS		= -m elf_i386 -Ttext $(ENTRY_POINT) -e main -Map $(BUILD_DIR)/kernel.map
 
@@ -35,7 +36,9 @@ OBJS		= 	$(BUILD_DIR)/main.o \
 				$(BUILD_DIR)/process.o \
 				$(BUILD_DIR)/syscall_init.o \
 				$(BUILD_DIR)/syscall.o \
-				$(BUILD_DIR)/stdio.o
+				$(BUILD_DIR)/stdio.o \
+				$(BUILD_DIR)/stdio_kernel.o \
+				$(BUILD_DIR)/ide.o
 
 # C
 # kernel
@@ -72,6 +75,9 @@ $(BUILD_DIR)/keyboard.o: device/keyboard.c
 $(BUILD_DIR)/ioqueue.o: device/ioqueue.c
 	$(CC) $(CFLAGS) $< -o $@
 
+$(BUILD_DIR)/ide.o: device/ide.c
+	$(CC) $(CFLAGS) $< -o $@
+
 # lib
 $(BUILD_DIR)/string.o: lib/string.c 
 	$(CC) $(CFLAGS) $< -o $@
@@ -84,6 +90,9 @@ $(BUILD_DIR)/bitmap.o: lib/kernel/bitmap.c
 	$(CC) $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/list.o: lib/kernel/list.c 
+	$(CC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/stdio_kernel.o: lib/kernel/stdio_kernel.c 
 	$(CC) $(CFLAGS) $< -o $@
 
 # lib/user

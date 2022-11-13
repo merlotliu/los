@@ -75,9 +75,10 @@ static void pic_init(void) {
     // outb(PIC_M_DATA, 0xfe); /* master OCW1: 1111 1110 */
     // outb(PIC_S_DATA, 0xff); /* slave OCW1: 1111 1111 */
 
-    /* test keyboard, only open keyboard intr */
-    outb(PIC_M_DATA, 0xfc);
-    outb(PIC_S_DATA, 0xff);
+    /* open IRQ0(clock) IRQ1(keyboard) IRQ2(cascade), 1 is shield */
+    outb(PIC_M_DATA, 0xf8);
+    /* open slave IRQ15(ata slave) */
+    outb(PIC_S_DATA, 0xbf);
 
     put_str("   pic_init done\n");
 }

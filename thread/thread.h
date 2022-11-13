@@ -114,6 +114,9 @@ void thread_block(enum task_status stat);
 /* wakeup blocked thread */
 void thread_unblock(struct task_struct* pthread);
 
+/* 主动让出 CPU 切换其他线程 */
+void thread_yield(void);
+
 /* task schedule */
 void schedule(void);
 

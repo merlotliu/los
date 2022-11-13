@@ -24,4 +24,4 @@ void console_put_char(uint8_t char_asci);
 /* terminator print integer */
 void console_put_int (uint32_t num);
 
-#endif
+#endif /* __DEVICE_CONSOLE_H */

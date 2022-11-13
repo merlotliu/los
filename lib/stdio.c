@@ -1,7 +1,5 @@
 #include "stdio.h"
 
-static char buf[1024];
-
 /* integer to ascii */
 static void itoa(uint32_t val, char** buf, uint8_t base) {
     uint32_t m = val % base;
@@ -67,8 +65,7 @@ uint32_t sprintf(char *buf, const char* format, ...) {
 
 /* 而格式化输出字符串 format */
 uint32_t printf(const char* format, ...) {
-    memset(buf, 0, sizeof(buf));
-
+    char buf[1024] = {0};
     va_list args;
     va_start(args, format);
     vsprintf(buf, format, args);
