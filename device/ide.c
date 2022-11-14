@@ -232,7 +232,7 @@ static void partition_scan(struct disk* hd, uint32_t ext_lba) {
                 list_push_back(&partition_list, &hd->logic_parts[logic_no].part_tag);
                 
                 logic_no++;
-                if(logic_no >= 8) { /* 仅支持 8 个逻辑分区，避免数组越界 */
+                if(logic_no >= MAX_PARTITION_LOGIC_CNT) { /* 仅支持 8 个逻辑分区，避免数组越界 */
                     return;
                 }
             }

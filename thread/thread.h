@@ -10,6 +10,8 @@
 #define IDLE_THREAD_PRIORITY 	10
 #define MAIN_THREAD_PRIORITY 	31
 
+#define MAX_FILES_OPEN_PER_PROC 8 /* 每个进程最多能打开的文件描述符个数 */
+
 /* general thread function type */
 typedef void thread_func(void*);
 
@@ -87,6 +89,7 @@ struct task_struct {
 	
 	/* 任务运行在 cpu 的总时间数，从开始到结束，该值不断递增 */
 	uint32_t elapsed_ticks;
+	int32_t fd_table[MAX_FILES_OPEN_PER_PROC]; /* 文件描述符数组 */
 	/* 标识线程，加入到线程就绪队列 */
 	struct list_elem general_tag;
 	/* 标识线程，加入到全部线程队列 */

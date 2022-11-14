@@ -9,6 +9,7 @@
 #include "tss.h"
 #include "syscall_init.h"
 #include "ide.h"
+#include "fs.h"
 
 /* init all of content */
 void init_all(void) {
@@ -22,4 +23,5 @@ void init_all(void) {
     tss_init(); /* init TSS */
     syscall_init(); /* init syscall */
     ide_init(); /* init hd */
+    filesys_init(); /* init file system */
 }

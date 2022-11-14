@@ -1,7 +1,7 @@
-#ifndef _KERNEL_INIT_H
-#define _KERNEL_INIT_H
+#ifndef __KERNEL_INIT_H
+#define __KERNEL_INIT_H
 
 /* init all of resource */
 void init_all(void);
 
-#endif
+#endif /* __KERNEL_INIT_H */

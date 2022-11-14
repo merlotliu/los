@@ -73,6 +73,16 @@ void thread_attr_init(struct task_struct* pthread, char* name, int priority) {
     pthread->priority = priority;
     pthread->ticks = priority;
     pthread->elapsed_ticks = 0;
+    
+    /* 文件描述符表 */
+    pthread->fd_table[0] = 0;
+    pthread->fd_table[1] = 1;
+    pthread->fd_table[2] = 2;
+    int fd_idx = 3;
+    for(; fd_idx < MAX_FILES_OPEN_PER_PROC; fd_idx++) {
+        pthread->fd_table[fd_idx] = -1;
+    }
+    
     pthread->pgdir = NULL;
     pthread->stack_magic = 0x19990926; /* 定义的魔数，如果该值被覆盖，说明溢出 */
 }

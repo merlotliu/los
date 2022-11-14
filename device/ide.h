@@ -3,6 +3,11 @@
 
 #include "global.h"
 #include "sync.h"
+#include "super_block.h"
+
+#define MAX_PARTITION_PRIMARY_CNT   0x04    /* 最多主分区 */
+#define MAX_PARTITION_LOGIC_CNT     0x08    /* 最多逻辑分区 */
+#define MAX_PARTITION_CNT           MAX_PARTITION_PRIMARY_CNT + MAX_PARTITION_LOGIC_CNT 
 
 /* partition struct */
 struct partition {
@@ -11,7 +16,7 @@ struct partition {
     struct disk* my_disk; /* 分区所属的硬盘 */
     struct list_elem part_tag; /* 队列中的标记 */
     char name[8]; /* 分区名 */
-    struct super_bck* sb; /* 本分区超级块 */
+    struct super_block* sb; /* 本分区超级块 */
     struct bitmap bck_btp; /* 块位图 */
     struct bitmap inode_btp; /* inode 节点位图 */
     struct list open_inodes; /* 本分区打开的 inode 节点队列 */

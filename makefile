@@ -4,7 +4,7 @@ ENTRY_POINT = 0xc0001500
 AS			= nasm
 CC 			= gcc
 LD 			= ld
-LIB 		= -I kernel/ -I device/ -I thread/ -I userprog/ -I lib/ -I lib/kernel -I lib/user/ 
+LIB 		= -I kernel/ -I device/ -I fs/ -I thread/ -I userprog/ -I lib/ -I lib/kernel -I lib/user/ 
 
 ASFLAGS 	= -f elf
 CFLAGS		= -m32 -Wall $(LIB) -c	-W\
@@ -38,7 +38,8 @@ OBJS		= 	$(BUILD_DIR)/main.o \
 				$(BUILD_DIR)/syscall.o \
 				$(BUILD_DIR)/stdio.o \
 				$(BUILD_DIR)/stdio_kernel.o \
-				$(BUILD_DIR)/ide.o
+				$(BUILD_DIR)/ide.o \
+				$(BUILD_DIR)/fs.o
 
 # C
 # kernel
@@ -76,6 +77,10 @@ $(BUILD_DIR)/ioqueue.o: device/ioqueue.c
 	$(CC) $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/ide.o: device/ide.c
+	$(CC) $(CFLAGS) $< -o $@
+
+# device
+$(BUILD_DIR)/fs.o: fs/fs.c
 	$(CC) $(CFLAGS) $< -o $@
 
 # lib
