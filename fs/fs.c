@@ -411,13 +411,32 @@ int32_t sys_open(const char* pathname, uint8_t flags) {
             printk("creating file '%s' \n", pathname);
             fd = file_create(searched_record.parent_dir, (strrchr(pathname,'/') + 1), flags);
             dir_close(searched_record.parent_dir);
-            break;
         }
-        default: {
+        default: { /* O_RDONLY O_WRPNLY O_RDWR */
+            fd = file_open(inode_no, flags);
             break;
         }
     }
     return fd;
+}
+
+/* 将文件描述符转化为文件表的下标 */
+static uint32_t fd_local2global(uint32_t localfd) {
+    struct task_struct* cur_thread = thread_running();
+    int32_t globalfd = cur_thread->fd_table[localfd];
+    ASSERT(globalfd >= 0 && globalfd < MAX_FILE_OPEN);
+    return (uint32_t)globalfd;
+}
+
+/* 关闭文件描述符 fd 指向的文件，成功返回 0，否则返回 -1 */
+int32_t sys_close(int32_t fd) {
+    int32_t ret = -1;
+    if(fd > 2) {
+        uint32_t gfd = fd_local2global(fd);
+        ret = file_close(__file_table + gfd);
+        thread_running()->fd_table[fd] = -1;
+    }
+    return ret;
 }
 
 /* 在磁盘上搜索文件系统，若没有则格式化分区创建文件系统 */

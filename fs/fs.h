@@ -41,6 +41,9 @@ int32_t file_create(struct dir* parent_dir, char* filename, uint8_t flags);
 /* 成功打开或创建文件后，返回文件描述符，否则返回 -1 */
 int32_t sys_open(const char* pathname, uint8_t flags);
 
+/* 关闭文件描述符 fd 指向的文件，成功返回 0，否则返回 -1 */
+int32_t sys_close(int32_t fd);
+
 /* 在磁盘上搜索文件系统，若没有则格式化分区创建文件系统 */
 void filesys_init(void);
 

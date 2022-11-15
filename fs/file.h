@@ -3,6 +3,7 @@
 
 #include "global.h"
 #include "ide.h"
+#include "fs.h"
 
 /* file struct */
 struct file {
@@ -27,6 +28,7 @@ enum bitmap_type {
 
 /* 从文件表 file_table 中获取一个空闲位，成功返回下表，失败返回 -1 */
 int32_t get_free_slot_in_global(void);
+
 /* 将全局描述符下标安装到线程或进程自己的全局文件描述符数组 */
 int32_t pcb_fd_install(int32_t global_fd_idx);
 
@@ -38,5 +40,11 @@ int32_t block_bitmap_alloc(struct partition* part);
 
 /* 将内存中 bitmap 第 bit_idx 位所在的 512 字节同步到硬盘 */
 void bitmap_sync(struct partition* part, uint32_t bit_idx, uint8_t btmp);
+
+/* 打开编号为 inode_no 的 inode 对应的文件 */
+int32_t file_open(uint32_t inode_no, uint8_t flag);
+
+/* 关闭文件 */
+int32_t file_close(struct file* file);
 
 #endif /* __FS_FILE_H */

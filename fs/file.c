@@ -2,9 +2,13 @@
 #include "thread.h"
 #include "ide.h"
 #include "stdio_kernel.h"
+#include "fs.h"
+#include "inode.h"
+#include "interrupt.h"
 
-/* 文件表 */
-struct file __file_table[MAX_FILE_OPEN];
+extern struct partition* __cur_part; /* 当前操作分区（全局变量） */
+
+struct file __file_table[MAX_FILE_OPEN]; /* 文件表 */
 
 /* 从文件表 file_table 中获取一个空闲位，成功返回下表，失败返回 -1 */
 int32_t get_free_slot_in_global(void) {
@@ -82,4 +86,45 @@ void bitmap_sync(struct partition* part, uint32_t bit_idx, uint8_t btmp) {
         }
     }
     ide_write(part->my_disk, sec_lba, btmp_off, 1);
+}
+
+/* 打开编号为 inode_no 的 inode 对应的文件 */
+int32_t file_open(uint32_t inode_no, uint8_t flag) {
+    /*  1. 在 __file_table 中获取空位下表，并初始化文件表项；
+        2. 判断文件打开标志，和写标志（i_write）; */
+    int fd_idx = get_free_slot_in_global();
+    if(fd_idx == -1) {
+        printk("exceed max open files\n");
+        return -1;
+    }
+
+    __file_table[fd_idx].fd_inode = inode_open(__cur_part, inode_no);
+    __file_table[fd_idx].fd_offset = 0; /* 每次打开让偏移置0 */
+    __file_table[fd_idx].fd_flag = flag;
+
+    bool* write_deny = &__file_table[fd_idx].fd_inode->i_write;
+
+    if(O_WRONLY & flag || O_RDWR & flag) {
+        enum intr_status old_stat = intr_disable();
+        if(*write_deny) { /* 其他进程正在写 */
+            intr_status_set(old_stat);
+            printk("file can't be write now, try again later\n") ;
+            return -1;
+        } else { /* 没有其他进程写文件的情况 */
+            *write_deny = true;
+            intr_status_set(old_stat);
+        }
+    }
+    return pcb_fd_install(fd_idx);
+}
+
+/* 关闭文件 */
+int32_t file_close(struct file* file) {
+    if(file == NULL) {
+        return -1;
+    }
+    file->fd_inode->i_write = false;
+    inode_close(file->fd_inode);
+    file->fd_inode = NULL;
+    return 0;
 }

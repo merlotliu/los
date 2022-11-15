@@ -33,8 +33,10 @@ int main(void) {
     // process_execute(u_prog_b, "user_prog_b");
     // thread_start("k_thread_a", THREAD_PRIORITY_DEFAULT, k_thread_aa, "    KThrdA");
     // thread_start("k_thread_b", THREAD_PRIORITY_DEFAULT, k_thread_bb, "    KThrdB");
-    sys_open("/file1", O_CREAT);
-
+    uint32_t fd = sys_open("/file1", O_RDONLY);
+    printf("opne fd : %d\n", fd);
+    sys_close(fd);
+    printf("close fd : %d\n", fd);
     while(1) {
         // console_put_str("Main ");
     }
