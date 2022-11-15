@@ -49,9 +49,9 @@ uint32_t getpid(void) {
     return _syscall0(SYS_GETPID);
 }
 
-/* write to memeory */
-uint32_t write(char* str) {
-    return _syscall1(SYS_WRITE, str);
+/* write() writes  up  to  count  bytes  from  the buffer pointed buf to the file referred to by the file descriptor fd. */
+ssize_t write(int fd, const void* buf, size_t count) {
+    return _syscall3(SYS_WRITE, fd, buf, count);
 }
 
 /* memory allocate */

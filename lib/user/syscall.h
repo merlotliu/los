@@ -13,8 +13,8 @@ enum SYSCALL_NR {
 /* get current process id */
 uint32_t getpid(void);
 
-/* write */
-uint32_t write(char* str);
+/* write() writes  up  to  count  bytes  from  the buffer pointed buf to the file referred to by the file descriptor fd. */
+ssize_t write(int fd, const void* buf, size_t count);
 
 /* memory allocate */
 void *malloc(uint32_t size);

@@ -1,4 +1,5 @@
 #include "stdio.h"
+#include "file.h"
 
 /* integer to ascii */
 static void itoa(uint32_t val, char** buf, uint8_t base) {
@@ -70,5 +71,5 @@ uint32_t printf(const char* format, ...) {
     va_start(args, format);
     vsprintf(buf, format, args);
     va_end(args);
-    return write(buf);
+    return write(stdout_no, buf, strlen(buf));
 }

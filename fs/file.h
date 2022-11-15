@@ -3,7 +3,6 @@
 
 #include "global.h"
 #include "ide.h"
-#include "fs.h"
 
 /* file struct */
 struct file {

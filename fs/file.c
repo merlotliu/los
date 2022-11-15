@@ -2,9 +2,10 @@
 #include "thread.h"
 #include "ide.h"
 #include "stdio_kernel.h"
-#include "fs.h"
 #include "inode.h"
 #include "interrupt.h"
+#include "debug.h"
+#include "fs.h"
 
 extern struct partition* __cur_part; /* 当前操作分区（全局变量） */
 
@@ -64,6 +65,8 @@ int32_t block_bitmap_alloc(struct partition* part) {
 
 /* 将内存中 bitmap 第 bit_idx 位所在的 512 字节同步到硬盘 */
 void bitmap_sync(struct partition* part, uint32_t bit_idx, uint8_t btmp) {
+    ASSERT(bit_idx != 0);
+
     uint32_t off_sec = bit_idx / 4096; /* 扇区偏移 */
     uint32_t off_size = off_sec % 4096; /* 扇区内字节偏移 */
     uint32_t sec_lba;

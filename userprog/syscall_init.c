@@ -4,6 +4,8 @@
 #include "thread.h"
 #include "print.h"
 #include "console.h"
+#include "stdio_kernel.h"
+#include "fs.h"
 
 #define syscall_nr 32
 typedef void* syscall;
@@ -13,12 +15,6 @@ syscall syscall_table[syscall_nr];
 /* get process pid */
 uint32_t sys_getpid(void) {
     return thread_running()->pid;
-}
-
-/* write to memory */
-uint32_t sys_write(char* str) {
-    console_put_str(str);
-    return strlen(str);
 }
 
 /* init system call */

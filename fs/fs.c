@@ -4,7 +4,6 @@
 #include "super_block.h"
 #include "debug.h"
 #include "stdio_kernel.h"
-#include "file.h"
 #include "inode.h"
 #include "string.h"
 
@@ -358,6 +357,157 @@ rollback:
     return -1;
 }
 
+/* 把buf 中的count 个字节写入file, 成功则返回写入的字节数，失败则返回 -1 */
+ssize_t file_write(struct file* file, const void* buf, size_t count) {
+    if((file->fd_inode->i_size + count) > (BLOCK_SIZE * 140)) {
+        printk("exceed max file_size 71680 bytes, write file failed\n");
+        return -1;
+    }   
+    uint8_t* io_buf = sys_malloc(SECTOR_SIZE);
+    if(io_buf == NULL) {
+        printk("file_write: sys_malloc for io_buf failed\n");
+        return -1;
+    }
+    uint32_t* all_bcks = (uint32_t*)sys_malloc(BLOCK_SIZE + 48);
+    if(all_bcks == NULL) {
+        printk("file_write: sys_malloc for all_blocks failed\n");
+        return -1;
+    }
+
+    int32_t bck_lba = -1; /* 块lba地址 */
+    uint32_t bck_idx = 0; /* 块索引 */
+    /* 如果是第一次写文件，先分配一个块 */
+    if(file->fd_inode->i_sectors[0] == 0) {
+        bck_lba = block_bitmap_alloc(__cur_part);
+        if(bck_lba == 1) {
+            printk("file_writ-e: block_bi tmap_alloc failed\n");
+            return -1;
+        }
+        file->fd_inode->i_sectors[0] = bck_lba;
+        bitmap_sync(__cur_part, bck_lba - __cur_part->sb->data_lba_start, BLOCK_BITMAP);
+    }
+    /* 文件写入之前已占据的块数 */
+    uint32_t file_used_bcks = file->fd_inode->i_size / BLOCK_SIZE + 1;
+    uint32_t file_will_use_bcks = (file->fd_inode->i_size + count) / BLOCK_SIZE + 1;
+    ASSERT(file_will_use_bcks <= 140);
+    uint32_t add_bcks = file_will_use_bcks - file_used_bcks; /* 需要增加的块 */
+
+    if(add_bcks == 0) { /* 不需要增加块 */
+        if(file_will_use_bcks < 13) { /* 数据量在 12 块之内（0-11） */
+            all_bcks[file_used_bcks - 1] = file->fd_inode->i_sectors[file_used_bcks - 1];
+        } else {
+            /* 读入间接块地址 */
+            ASSERT(file->fd_inode->i_sectors[12] != 0);
+            ide_read(__cur_part->my_disk, file->fd_inode->i_sectors[12], all_bcks + 12, 1);
+        }
+    } else { /* 需要增加块 */
+        if(file_will_use_bcks < 13) {
+            /* 情况1：12个直接块够用 */
+            bck_idx = file_used_bcks - 1;
+            *(all_bcks + bck_idx) = *(file->fd_inode->i_sectors + bck_idx);
+            
+            bck_idx = file_used_bcks;
+            while(bck_idx < file_will_use_bcks) {
+                bck_lba = block_bitmap_alloc(__cur_part);
+                if(bck_lba == -1) {
+                    printk("file_write: block_bitmap alloc for situation 1 failed\n");
+                    return -1;
+                }
+                /* 确保扇区地址尚未分配 */
+                ASSERT(file->fd_inode->i_sectors[bck_idx] == 0);
+                file->fd_inode->i_sectors[bck_idx] = all_bcks[bck_idx] = bck_lba;
+                bitmap_sync(__cur_part, bck_lba - __cur_part->sb->data_lba_start, BLOCK_BITMAP);
+                bck_idx++;
+            }
+        } else if(file_used_bcks < 13 && file_will_use_bcks > 12) {
+            /* 情况2：旧数据在 12 个直接块以内，新数据将使用间接块 */
+            bck_idx = file_used_bcks - 1;
+            all_bcks[bck_idx] = file->fd_inode->i_sectors[bck_idx];
+            /* 创建 1 级间接块 */
+            bck_lba = block_bitmap_alloc(__cur_part);
+            if(bck_lba == -1) {
+                printk ("file_write: block bitmap_alloc for situation 2 failed\n");
+                return -1;
+            }
+            ASSERT(file->fd_inode->i_sectors[12] == 0);
+            file->fd_inode->i_sectors[12] = bck_lba;
+            
+            bck_idx = file_used_bcks;
+            while(bck_idx < file_will_use_bcks) {
+                bck_lba = block_bitmap_alloc(__cur_part);
+                if(bck_lba == -1) {
+                    printk("file_write: block_bitmap_alloc for situation 2 failed\n");
+                    return -1;
+                }
+                if(bck_idx < 12) {
+                    ASSERT(file->fd_inode->i_sectors[bck_idx] == 0);
+                    file->fd_inode->i_sectors[bck_idx] = bck_lba;
+                }
+                all_bcks[bck_idx] = bck_lba;
+                bitmap_sync(__cur_part, bck_lba - __cur_part->sb->data_lba_start, BLOCK_BITMAP);
+                bck_idx++;
+            }
+            ide_write(__cur_part->my_disk, file->fd_inode->i_sectors[12], all_bcks + 12, 1);
+        } else if(file_used_bcks > 12) {
+            /* 情况3：旧数据已经使用过间接块 */
+            ASSERT(file->fd_inode->i_sectors[12] != 0);
+            /* 读入所有间接块内容到 all_bcks */
+            ide_read(__cur_part->my_disk, file->fd_inode->i_sectors[12], all_bcks + 12, 1);
+            bck_idx = file_used_bcks;
+            while(bck_idx < file_will_use_bcks) {
+                bck_lba = block_bitmap_alloc(__cur_part);
+                if(bck_lba == -1) {
+                    printk("file_write: block_bitmap_alloc for situation 3 failed\n");
+                    return -1;
+                }
+                all_bcks[bck_idx] = bck_lba;
+                bitmap_sync(__cur_part, bck_lba - __cur_part->sb->data_lba_start, BLOCK_BITMAP);
+                bck_idx++;
+            }
+            ide_write(__cur_part->my_disk, file->fd_inode->i_sectors[12], all_bcks + 12, 1);
+        }
+    }
+    
+    /* 写入数据 */
+    bool first_write_bck = true; /* 剩余空间块标识 */
+    
+    uint32_t bytes_written = 0; /* 已写入数据大小 */
+    uint32_t bytes_rest = count; /* 剩余数据大小 */
+    uint32_t sec_lba; /* 扇区地址 */
+    uint32_t sec_bytes_off; /* 扇区内字节偏移量 */
+    uint32_t sec_bytes_rest; /* 扇区内剩余字节量 */
+    uint32_t chunk_size; /* 每次写入硬盘的数据块的大小 */
+
+    uint8_t* src = (uint8_t*)buf;
+    while(bytes_written < count) {
+        memset(io_buf, 0, BLOCK_SIZE);
+        sec_lba = all_bcks[file->fd_inode->i_size / BLOCK_SIZE];
+        sec_bytes_off = file->fd_inode->i_size % BLOCK_SIZE;
+        sec_bytes_rest = BLOCK_SIZE - sec_bytes_off;
+
+        chunk_size = bytes_rest < sec_bytes_rest ? bytes_rest : sec_bytes_rest;
+        if(first_write_bck) {
+            ide_read(__cur_part->my_disk, sec_lba, io_buf, 1);
+            first_write_bck = false;
+        }
+        memcpy(io_buf + sec_bytes_off, src, chunk_size);
+        ide_write(__cur_part->my_disk, sec_lba, io_buf, 1);
+        printk("file write at lba 0x%x\n", sec_lba); // 调试，完成后去掉
+
+        src += chunk_size;
+        file->fd_inode->i_size += chunk_size;
+        file->fd_offset += chunk_size;
+        
+        bytes_written += chunk_size;
+        bytes_rest -= chunk_size;
+    }
+    inode_sync(__cur_part, file->fd_inode, io_buf);
+    
+    sys_free(all_bcks);
+    sys_free(io_buf);
+    return -1;
+}
+
 /* 成功打开或创建文件后，返回文件描述符，否则返回 -1 */
 int32_t sys_open(const char* pathname, uint8_t flags) {
     if('/' == pathname[strlen(pathname) - 1]) { /* 目录 */
@@ -437,6 +587,28 @@ int32_t sys_close(int32_t fd) {
         thread_running()->fd_table[fd] = -1;
     }
     return ret;
+}
+
+/* 将 buf 中连续 count 字节写入 fd，成功返回写入的字节数，失败返回 -1 */
+ssize_t sys_write(int fd, const void* buf, size_t count) {
+    if(fd < 0) {
+        printk("sys_write: fd %d error\n", fd);
+        return -1;
+    }
+    if(fd == stdout_no) {
+        char* str = (char*)buf;
+        console_put_str(str);
+        return count;
+    }
+    /* 通过 fd 找到全局文件表中的文件 */
+    int gfd = fd_local2global(fd);
+    struct file* wr_file = __file_table + gfd;
+    if(O_RDWR & wr_file->fd_flag || O_WRONLY & wr_file->fd_flag) {
+        return file_write(wr_file, buf, count);
+    } else {
+        console_put_str("sys_write: not allowed to write file without flag O_RDWR or O_WRONLY\n") ;
+        return -1;
+    }
 }
 
 /* 在磁盘上搜索文件系统，若没有则格式化分区创建文件系统 */
