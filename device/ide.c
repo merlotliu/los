@@ -42,7 +42,7 @@
 #define CMD_WRITE_SECTOR        0x30    /* 写扇区指令 */
 
 /* 定义可读写的最大扇区数， 调试用的 */
-#define max_lba                 ((80*1024*1024/512) - 1) /* 只支持80MB 硬盘 */
+#define MAX_LBA_CNT             ((80*1024*1024/512) - 1) /* 只支持80MB 硬盘 */
 
 uint8_t channel_cnt; /* 按硬盘数计算的通道数 */
 struct ide_channel channels[2]; /* 有两个ide通道 */
@@ -91,7 +91,7 @@ static void select_disk(struct disk* hd) {
 
 /* 向硬盘监控器写入起始扇区地址及读取的扇区数 */
 static void select_sector(struct disk* hd, uint32_t lba, uint8_t sec_cnt) {
-    ASSERT(lba <= max_lba);
+    ASSERT(lba <= MAX_LBA_CNT);
     struct ide_channel* channel = hd->my_channel;
 
     /*  1. 写入需要读取的扇区数；
@@ -252,7 +252,7 @@ static bool print_partition_info(struct list_elem* pelem, void* arg UNUSED) {
 /* 从硬盘 hd 读取从 lba 扇区地址开始的 sec_cnt 个扇区到 buf */
 void ide_read(struct disk* hd, uint32_t lba, void* buf, uint32_t sec_cnt) {
     /* 该操作需要加锁，以保证一次只操作同意通道上的一块硬盘 */
-    ASSERT(lba <= max_lba);
+    ASSERT(lba <= MAX_LBA_CNT);
     ASSERT(sec_cnt > 0);
     locker_lock(&hd->my_channel->locker);
     
@@ -289,7 +289,7 @@ void ide_read(struct disk* hd, uint32_t lba, void* buf, uint32_t sec_cnt) {
 
 /* 将 buf 中 sec_cnt 个扇区的数据写入到从硬盘 hd 从 lba 扇区地址开始的扇区 */
 void ide_write(struct disk* hd, uint32_t lba, void* buf, uint32_t sec_cnt) {
-    ASSERT(lba <= max_lba);
+    ASSERT(lba <= MAX_LBA_CNT);
     ASSERT(sec_cnt > 0);
     locker_lock(&hd->my_channel->locker);
     select_disk(hd);

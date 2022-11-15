@@ -39,7 +39,10 @@ OBJS		= 	$(BUILD_DIR)/main.o \
 				$(BUILD_DIR)/stdio.o \
 				$(BUILD_DIR)/stdio_kernel.o \
 				$(BUILD_DIR)/ide.o \
-				$(BUILD_DIR)/fs.o
+				$(BUILD_DIR)/fs.o \
+				$(BUILD_DIR)/dir.o \
+				$(BUILD_DIR)/file.o \
+				$(BUILD_DIR)/inode.o
 
 # C
 # kernel
@@ -81,6 +84,15 @@ $(BUILD_DIR)/ide.o: device/ide.c
 
 # device
 $(BUILD_DIR)/fs.o: fs/fs.c
+	$(CC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/dir.o: fs/dir.c
+	$(CC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/file.o: fs/file.c
+	$(CC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/inode.o : fs/inode.c
 	$(CC) $(CFLAGS) $< -o $@
 
 # lib

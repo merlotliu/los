@@ -95,9 +95,10 @@ char* strrchr(const char* str, const uint8_t ch) {
     ASSERT(str != NULL);
     const char* last_ch_addr = NULL;
     while(*str != 0) {
-        if(ch == *str++) {
+        if(ch == *str) {
             last_ch_addr = str;
         }
+        str++;
     }
     return (char*)last_ch_addr;
 }

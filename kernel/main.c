@@ -11,6 +11,7 @@
 #include "syscall.h"
 #include "syscall_init.h"
 #include "stdio.h"
+#include "fs.h"
 
 void k_thread_a(void*);
 void k_thread_b(void*);
@@ -30,13 +31,9 @@ int main(void) {
     /* thread */
     // process_execute(u_prog_a, "user_prog_a");
     // process_execute(u_prog_b, "user_prog_b");
-
-    // console_put_str("    main_pid:0x");
-    // console_put_int(sys_getpid());
-    // console_put_str("\n");
-
-    // thread_start("k_thread_a", 31, k_thread_aa, "    KThrdA");
-    // thread_start("k_thread_b", 31, k_thread_bb, "    KThrdB");
+    // thread_start("k_thread_a", THREAD_PRIORITY_DEFAULT, k_thread_aa, "    KThrdA");
+    // thread_start("k_thread_b", THREAD_PRIORITY_DEFAULT, k_thread_bb, "    KThrdB");
+    sys_open("/file1", O_CREAT);
 
     while(1) {
         // console_put_str("Main ");

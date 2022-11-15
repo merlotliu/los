@@ -372,7 +372,7 @@ void* sys_malloc(uint32_t size) {
     struct task_struct* cur_thread = thread_running();
 
     /* 判断用那个内存池 */
-    if(cur_thread->pgdir == NULL) {
+    if(cur_thread->pgdir == NULL) { /* kernel */
         mpf = MPF_KERNEL;
         pool_size = kernel_phy_pool.pool_size;
         mem_pool = &kernel_phy_pool;

@@ -6,7 +6,7 @@
 #include "global.h"
 #include "memory.h"
 
-#define THREAD_PRIORITY_DEFAULT 10
+#define THREAD_PRIORITY_DEFAULT 31
 #define IDLE_THREAD_PRIORITY 	10
 #define MAIN_THREAD_PRIORITY 	31
 
