@@ -4,7 +4,7 @@ ENTRY_POINT = 0xc0001500
 AS			= nasm
 CC 			= gcc
 LD 			= ld
-LIB 		= -I kernel/ -I device/ -I fs/ -I thread/ -I userprog/ -I lib/ -I lib/kernel -I lib/user/ 
+LIB 		= -I kernel/ -I device/ -I fs/ -I shell/ -I thread/ -I userprog/ -I lib/ -I lib/kernel -I lib/user/ 
 
 ASFLAGS 	= -f elf
 CFLAGS		= -m32 -Wall $(LIB) -c	-W\
@@ -42,7 +42,9 @@ OBJS		= 	$(BUILD_DIR)/main.o \
 				$(BUILD_DIR)/fs.o \
 				$(BUILD_DIR)/dir.o \
 				$(BUILD_DIR)/file.o \
-				$(BUILD_DIR)/inode.o
+				$(BUILD_DIR)/inode.o \
+				$(BUILD_DIR)/fork.o \
+				$(BUILD_DIR)/shell.o
 
 # C
 # kernel
@@ -123,11 +125,18 @@ $(BUILD_DIR)/thread.o: thread/thread.c
 $(BUILD_DIR)/sync.o: thread/sync.c 
 	$(CC) $(CFLAGS) $< -o $@
 
+# shell
+$(BUILD_DIR)/shell.o: shell/shell.c 
+	$(CC) $(CFLAGS) $< -o $@
+
 # userprog
 $(BUILD_DIR)/tss.o: userprog/tss.c 
 	$(CC) $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/process.o: userprog/process.c 
+	$(CC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/fork.o: userprog/fork.c
 	$(CC) $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/syscall_init.o: userprog/syscall_init.c

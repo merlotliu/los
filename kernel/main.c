@@ -12,6 +12,10 @@
 #include "syscall_init.h"
 #include "stdio.h"
 #include "fs.h"
+#include "shell.h"
+
+/* init process */
+void init(void);
 
 void k_thread_a(void*);
 void k_thread_b(void*);
@@ -25,25 +29,43 @@ int prog_a_pid = 0, prog_b_pid = 0;
 int main(void) {
     put_str("I am kernel\n");
     init_all();
+    // cls_screen();
+    // print_prompt();
+    // shell();
+
     intr_enable(); /* open interrupt */
     ASSERT(intr_status_get() == INTR_ON);
-    
+
+    while(1) {
+        // console_put_str("Main ");
+    }
+    return 0;   
+
     /* thread */
     // process_execute(u_prog_a, "user_prog_a");
     // process_execute(u_prog_b, "user_prog_b");
     // thread_start("k_thread_a", THREAD_PRIORITY_DEFAULT, k_thread_aa, "    KThrdA");
     // thread_start("k_thread_b", THREAD_PRIORITY_DEFAULT, k_thread_bb, "    KThrdB");
-    uint32_t fd = sys_open("/file1", O_RDWR);
-    printf("open fd : %d\n", fd);
+    // uint32_t fd = sys_open("/file1", O_RDWR);
+    // printf("open fd : %d\n", fd);
     
-    sys_write(fd, "hello world!\n", 13);
+    // sys_write(fd, "hello world!\n", 13);
 
-    sys_close(fd);
-    printf("close fd : %d\n", fd);
-    while(1) {
-        // console_put_str("Main ");
+    // sys_close(fd);
+    // printf("close fd : %d\n", fd);
+}
+
+/* init process */
+void init(void) {
+    uint32_t ret_pid = fork();
+    if(ret_pid) { /* 父进程 */
+        printf("i am father, my pid is %d, child pid is %d\n", getpid() , ret_pid) ;
+    } else {
+        // shell();
+        printf("i am child, my pid is %d, ret pid is %d\n", getpid() , ret_pid) ;
     }
-    return 0;
+    // PANIC("init: should not be here");
+    while(1);
 }
 
 void k_thread_a(void* arg UNUSED) {

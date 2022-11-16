@@ -11,5 +11,7 @@ void put_char(uint8_t char_asci);
 void put_str(char *message);
 /* print 32 bits 16 based integer */
 void put_int(uint32_t num);
+/* clear screen */
+void cls_screen(void);
 
 #endif /* __LIB_KERNEL_PRINT_H */

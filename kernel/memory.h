@@ -84,6 +84,9 @@ void* get_user_pages(uint32_t pg_cnt);
  */
 void* get_a_page(enum mem_pool_flags mpf, uint32_t vaddr);
 
+/* 申请一块物理内存而不操作虚拟地址位图 */
+void* get_a_page2(enum mem_pool_flags mpf, uint32_t vaddr);
+
 /* get physical address which virtual address mapped */
 uint32_t addr_v2p(uint32_t vaddr);
 

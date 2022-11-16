@@ -347,6 +347,20 @@ void* get_a_page(enum mem_pool_flags mpf, uint32_t vaddr) {
     return ((void*)vaddr);
 }
 
+/* 申请一块物理内存而不操作虚拟地址位图 */
+void* get_a_page2(enum mem_pool_flags mpf, uint32_t vaddr) {
+    struct paddr_mem_pool* mem_pool = mpf & MPF_KERNEL ? &kernel_phy_pool : &user_phy_pool;
+    locker_lock(&mem_pool->locker);
+    /* 申请一页物理内存 */
+    void* phy_page = palloc(mem_pool);
+    if(phy_page == NULL) {
+        return NULL;
+    }
+    page_table_map((void*)vaddr, phy_page);
+    locker_unlock(&mem_pool->locker);
+    return ((void*)vaddr);
+}
+
 /* get physical address which virtual address mapped */
 uint32_t addr_v2p(uint32_t vaddr) {
     uint32_t* pte = pte_ptr(vaddr);

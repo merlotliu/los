@@ -36,7 +36,7 @@
 #define K_CTRL_L_BREAKCODE  0xe09d
 #define K_CAPSLOCK_MAKECODE 0x3a
 
-ioqueue_t kbd_buf; /* keyboard buffer */
+ioqueue_t __kbd_buf; /* keyboard buffer */
 
 /* 1 is push down, 0 is pop on. As for extern_status, 1 is extern key(begin with 0xe0). */
 static bool ctrl_status, shift_status, alt_status, capslock_status, extern_scancode;
@@ -194,9 +194,8 @@ static void intr_keyboard_handler(void) {
             uint8_t key_idx = scancode;
             char cur_char = keymap[key_idx][b_shift];
             if(cur_char) { /* 0x0表示error暂不处理 */
-                if(!ioq_full(&kbd_buf)) {
-                    put_char(cur_char);
-                    ioq_putchar(&kbd_buf, cur_char);
+                if(!ioq_full(&__kbd_buf)) {
+                    ioq_putchar(&__kbd_buf, cur_char);
                 }
                 return;
             }
@@ -235,7 +234,7 @@ static void intr_keyboard_handler(void) {
 /* keyboard init */
 void keyboard_init(void) {
     put_str("keyboard init start\n");
-    ioq_init(&kbd_buf);
+    ioq_init(&__kbd_buf);
     put_str("   ");
     intr_handler_register(0x21, intr_keyboard_handler);
     put_str("keyboard init done\n");

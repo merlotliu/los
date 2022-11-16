@@ -8,14 +8,13 @@
 
 struct task_struct* main_thread; /* main thread PCB */
 struct task_struct* idle_thread; /* idle thread PCB */
-struct list thread_ready_list; /* ready tasks queue */
-struct list thread_all_list; /* all tasks queue */
+struct list __thread_ready_list; /* ready tasks queue */
+struct list __thread_all_list; /* all tasks queue */
 static struct list_elem* thread_tag; /* thread node of queue */
 locker_t pid_locker; /* pid locker */
 
-
-
 extern void switch_to(struct task_struct* cur, struct task_struct* next);
+extern void init(void);
 
 /* 获取当前线程 PCB 指针 */
 struct task_struct* thread_running(void) {
@@ -40,6 +39,11 @@ static pid_t allocate_pid(void) {
     return next_pid;
 }
 
+/* allocate pid for fork */
+pid_t fork_pid(void) {
+    return allocate_pid();
+}
+
 /* 初始化线程栈 thread_stack，将待执行的参数放在对应位置 */
 void thread_create(struct task_struct* pthread, thread_func func, void* func_arg) { 
     /* 预留出中断栈和线程栈的空间 */
@@ -61,6 +65,9 @@ void thread_create(struct task_struct* pthread, thread_func func, void* func_arg
 void thread_attr_init(struct task_struct* pthread, char* name, int priority) {
     memset(pthread, 0, sizeof(*pthread));
     pthread->pid = allocate_pid();
+    put_int(pthread->pid);
+    put_char('\n');
+    pthread->ppid = -1;
     strcpy(pthread->name, name);
 
     if(pthread == main_thread) {
@@ -96,11 +103,11 @@ struct task_struct* thread_start(char* name, int priority, thread_func* func, vo
     thread_create(thread, func, func_arg);
 
     /* ASSERT 保证元素不被重复添加进队列 */
-    ASSERT(!(elem_find(&thread_ready_list, &thread->general_tag)));
-    list_push_back(&thread_ready_list, &thread->general_tag);
+    ASSERT(!(elem_find(&__thread_ready_list, &thread->general_tag)));
+    list_push_back(&__thread_ready_list, &thread->general_tag);
 
-    ASSERT(!(elem_find(&thread_all_list, &thread->all_list_tag)));
-    list_push_back(&thread_all_list, &thread->all_list_tag);
+    ASSERT(!(elem_find(&__thread_all_list, &thread->all_list_tag)));
+    list_push_back(&__thread_all_list, &thread->all_list_tag);
 
     return thread;
 }
@@ -123,11 +130,11 @@ void thread_unblock(struct task_struct* pthread) {
     enum intr_status old_stat = intr_disable();
 
     if(TASK_READY != pthread->status) {
-        ASSERT(!elem_find(&thread_ready_list, &pthread->general_tag));
-        if(elem_find(&thread_ready_list, &pthread->general_tag)) {
+        ASSERT(!elem_find(&__thread_ready_list, &pthread->general_tag));
+        if(elem_find(&__thread_ready_list, &pthread->general_tag)) {
             PANIC("thread_unblock: blocked thread in ready_list\n") ;
         }
-        list_push_front(&thread_ready_list, &pthread->general_tag);
+        list_push_front(&__thread_ready_list, &pthread->general_tag);
         pthread->status = TASK_READY;
     }
 
@@ -139,8 +146,8 @@ void thread_yield(void) {
     enum intr_status old_stat = intr_disable();
 
     struct task_struct* cur_thread = thread_running();
-    ASSERT(!elem_find(&thread_ready_list, &cur_thread->general_tag));
-    list_push_back(&thread_ready_list, &cur_thread->general_tag);
+    ASSERT(!elem_find(&__thread_ready_list, &cur_thread->general_tag));
+    list_push_back(&__thread_ready_list, &cur_thread->general_tag);
     cur_thread->status = TASK_READY;
     schedule();
     
@@ -156,9 +163,9 @@ static void make_main_thread(void) {
     main_thread = thread_running();
     thread_attr_init(main_thread, "main", MAIN_THREAD_PRIORITY);
 
-    /* main 函数为当前线程，不在就绪队列中，仅在 thread_all_list 中 */
-    ASSERT(!(elem_find(&thread_all_list, &main_thread->all_list_tag)));
-    list_push_back(&thread_all_list, &main_thread->all_list_tag);
+    /* main 函数为当前线程，不在就绪队列中，仅在 __thread_all_list 中 */
+    ASSERT(!(elem_find(&__thread_all_list, &main_thread->all_list_tag)));
+    list_push_back(&__thread_all_list, &main_thread->all_list_tag);
 }
 
 /* 系统空闲时运行的线程 */
@@ -178,9 +185,9 @@ void schedule(void) {
     if(cur_tcb->status == TASK_RUNNING) {
         /* 时间片到，加入就绪队列尾部 */
 
-        ASSERT(!elem_find(&thread_ready_list, &cur_tcb->general_tag));
+        ASSERT(!elem_find(&__thread_ready_list, &cur_tcb->general_tag));
 
-        list_push_back(&thread_ready_list, &cur_tcb->general_tag);
+        list_push_back(&__thread_ready_list, &cur_tcb->general_tag);
         cur_tcb->ticks = cur_tcb->priority; /* 重置时间片为 priority */
         cur_tcb->status = TASK_READY;
     } else {
@@ -188,15 +195,15 @@ void schedule(void) {
     }
     
     // /* 暂时用该语句保证就绪队列不为空 */
-    // ASSERT(!list_empty(&thread_ready_list));
+    // ASSERT(!list_empty(&__thread_ready_list));
     /* 没有可运行的任务，则执行 idle */
-    if(list_empty(&thread_ready_list)) {
+    if(list_empty(&__thread_ready_list)) {
         thread_unblock(idle_thread);
     }
 
     /* 从就绪队列获取一个 tcb，但因为其中存的是 list_elem 需要转化为 tcb 的地址 */
     thread_tag = NULL;
-    thread_tag = list_pop(&thread_ready_list);
+    thread_tag = list_pop(&__thread_ready_list);
     /* elem to tcb */
     struct task_struct* next_tcb =\
         elem2entry(struct task_struct, general_tag, thread_tag);
@@ -205,8 +212,8 @@ void schedule(void) {
     /* activate task page table ... */
     process_activate(next_tcb);
 
-    // struct list_elem* elem = &thread_ready_list.head;
-    // while(elem != &thread_ready_list.tail) {
+    // struct list_elem* elem = &__thread_ready_list.head;
+    // while(elem != &__thread_ready_list.tail) {
     //     put_int((uint32_t)elem2entry(struct task_struct, general_tag, elem));
     //     elem = elem->next;
     // }
@@ -216,18 +223,18 @@ void schedule(void) {
 
 /* init thread environment */
 void thread_env_init(void) {
-    put_str("thread_init start\n");
+    put_str("thread_env_init start\n");
     
-    list_init(&thread_ready_list);
-    list_init(&thread_all_list);
+    list_init(&__thread_ready_list);
+    list_init(&__thread_all_list);
     
     locker_init(&pid_locker);
-
+    /* 创建第一个用户进程：放在第一个初始化，init 进程pid就会为 1 */
+    process_execute(init, "init");
     /* 当前 main 函数设置为主线程 */
     make_main_thread();
-
     /* 创建 idle 线程 */
     idle_thread = thread_start("idle", IDLE_THREAD_PRIORITY, idle, NULL);
-
-    put_str("thread_init done\n");
+    
+    put_str("thread_env_init done\n");
 }

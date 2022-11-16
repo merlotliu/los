@@ -6,12 +6,14 @@
 #include "stdio_kernel.h"
 #include "inode.h"
 #include "string.h"
+#include "keyboard.h"
 
 extern uint8_t channel_cnt; /* 按硬盘数计算的通道数 */
 extern struct ide_channel channels[2]; /* 有两个ide通道 */
 extern struct list partition_list; /* 分区队列 */
 extern struct file __file_table[MAX_FILE_OPEN]; /* 文件表 */
 extern struct dir __root_dir; /* 根目录 */
+extern ioqueue_t __kbd_buf; /* keyboard buffer */
 
 struct partition* __cur_part; /* 当前操作分区（全局变量） */
 
@@ -508,6 +510,11 @@ ssize_t file_write(struct file* file, const void* buf, size_t count) {
     return -1;
 }
 
+/* 从 file 连续读取 count 个字节到 buf, 成功则返回读到的字节数，失败则返回 -1 */
+ssize_t file_read(struct file* file, void* buf, size_t count) {
+
+}
+
 /* 成功打开或创建文件后，返回文件描述符，否则返回 -1 */
 int32_t sys_open(const char* pathname, uint8_t flags) {
     if('/' == pathname[strlen(pathname) - 1]) { /* 目录 */
@@ -609,6 +616,26 @@ ssize_t sys_write(int fd, const void* buf, size_t count) {
         console_put_str("sys_write: not allowed to write file without flag O_RDWR or O_WRONLY\n") ;
         return -1;
     }
+}
+
+/* 从 buf 中连续读入 count 字节到 fd，成功返回读入的字节数，失败返回 -1 */
+ssize_t sys_read(int fd, void* buf, size_t count) {
+    ASSERT(buf != NULL);
+    int32_t ret = -1;
+    if(fd < 0 || stdout_no == fd || stderr_no == fd) {
+        printk ("sys_read: fd error\n");
+    } else if(stdin_no == fd) {
+        char* buffer = (char*)buf;
+        uint32_t bytes_read = 0;
+        while(bytes_read < count) {
+            *buffer++ = ioq_getchar(&__kbd_buf);
+            bytes_read++;
+        }
+        ret = bytes_read == 0 ? -1 : (ssize_t)bytes_read;
+    } else {
+        ret = file_read(__file_table + fd_local2global(fd), buf, count);
+    }
+    return ret;
 }
 
 /* 在磁盘上搜索文件系统，若没有则格式化分区创建文件系统 */

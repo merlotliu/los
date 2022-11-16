@@ -10,10 +10,6 @@
 #include "string.h"
 #include "interrupt.h"
 
-extern void intr_exit(void);
-extern struct list thread_ready_list; /* ready tasks queue */
-extern struct list thread_all_list; /* all tasks queue */
-
 /* 构建用户进程初始上下文信息 */
 void process_start(void *filename_);
 

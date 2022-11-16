@@ -42,6 +42,9 @@ int32_t file_create(struct dir* parent_dir, char* filename, uint8_t flags);
 /* 把buf 中的count 个字节写入file, 成功则返回写入的字节数，失败则返回 -1 */
 ssize_t file_write(struct file* file, const void* buf, size_t count);
 
+/* 从 file 连续读取 count 个字节到 buf, 成功则返回读到的字节数，失败则返回 -1 */
+ssize_t file_read(struct file* file, void* buf, size_t count);
+
 /* 成功打开或创建文件后，返回文件描述符，否则返回 -1 */
 int32_t sys_open(const char* pathname, uint8_t flags);
 
@@ -50,6 +53,9 @@ int32_t sys_close(int32_t fd);
 
 /* 将 buf 中连续 count 字节写入 fd，成功返回写入的字节数，失败返回 -1 */
 ssize_t sys_write(int fd, const void* buf, size_t count);
+
+/* 从 buf 中连续读入 count 字节到 fd，成功返回读入的字节数，失败返回 -1 */
+ssize_t sys_read(int fd, void* buf, size_t count);
 
 /* 在磁盘上搜索文件系统，若没有则格式化分区创建文件系统 */
 void filesys_init(void);

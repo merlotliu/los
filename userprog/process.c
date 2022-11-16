@@ -9,8 +9,8 @@
 #include "console.h"
 
 extern void intr_exit(void);
-extern struct list thread_ready_list; /* ready tasks queue */
-extern struct list thread_all_list; /* all tasks queue */
+extern struct list __thread_ready_list; /* ready tasks queue */
+extern struct list __thread_all_list; /* all tasks queue */
 
 /* 构建用户进程初始上下文信息 */
 void process_start(void *filename_) {
@@ -111,11 +111,11 @@ void process_execute(void* filename, char* name) {
 
     enum intr_status old_stat = intr_disable();
 
-    ASSERT(!elem_find(&thread_ready_list, &pthread->general_tag));
-    list_push_back(&thread_ready_list, &pthread->general_tag);
+    ASSERT(!elem_find(&__thread_ready_list, &pthread->general_tag));
+    list_push_back(&__thread_ready_list, &pthread->general_tag);
 
-    ASSERT(!elem_find(&thread_all_list, &pthread->all_list_tag));
-    list_push_back(&thread_all_list, &pthread->all_list_tag);
+    ASSERT(!elem_find(&__thread_all_list, &pthread->all_list_tag));
+    list_push_back(&__thread_all_list, &pthread->all_list_tag);
 
     intr_status_set(old_stat);
 }

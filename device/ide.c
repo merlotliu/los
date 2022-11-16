@@ -391,7 +391,7 @@ void ide_init(void) {
         channel_no++;
     }
     
-    printk("\n  all partition info\n");
+    printk("all partition info\n");
     list_traversal(&partition_list, print_partition_info, NULL);
 
     printk("ide_init done\n");

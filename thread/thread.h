@@ -69,7 +69,7 @@ struct thread_stack {
 	uint32_t edi;
 	uint32_t esi;
 	
-	/* 线程第一次执行时，eip指向待调用的函数 kernel_thread，其他时候指向 witch_to 的返回地址  */
+	/* 线程第一次执行时，eip指向待调用的函数 kernel_thread，其他时候指向 switch_to 的返回地址  */
 	void (*eip)(thread_func* func, void* func_arg);	
 
 	/* CPU 第一次调用 */
@@ -82,6 +82,7 @@ struct thread_stack {
 struct task_struct {
 	uint32_t* self_kstack; /* 各内核线程都用自己的内核栈 */
 	pid_t pid;
+	pid_t ppid; /* parent pid */
 	enum task_status status; 
 	char name[16];
 	uint8_t priority; /* 线程优先级，优先级越高，时间片越长 */
@@ -101,6 +102,9 @@ struct task_struct {
 };
 /* 获取当前线程 PCB 指针 */
 struct task_struct* thread_running(void);
+
+/* allocate pid for fork */
+pid_t fork_pid(void);
 
 /* 初始化线程栈 thread_stack，将待执行的参数放在对应位置 */
 void thread_create(struct task_struct* pthread, thread_func func, void* func_arg);
