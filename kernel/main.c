@@ -29,13 +29,11 @@ int prog_a_pid = 0, prog_b_pid = 0;
 int main(void) {
     put_str("I am kernel\n");
     init_all();
-    // cls_screen();
-    // print_prompt();
-    // shell();
-
+    cls_screen();
+    print_prompt();
+    
     intr_enable(); /* open interrupt */
-    ASSERT(intr_status_get() == INTR_ON);
-
+    // ASSERT(intr_status_get() == INTR_ON);
     while(1) {
         // console_put_str("Main ");
     }
@@ -59,13 +57,13 @@ int main(void) {
 void init(void) {
     uint32_t ret_pid = fork();
     if(ret_pid) { /* 父进程 */
-        printf("i am father, my pid is %d, child pid is %d\n", getpid() , ret_pid) ;
+        while(1);
+        // printf("i am father, my pid is %d, child pid is %d\n", getpid() , ret_pid) ;
     } else {
-        // shell();
-        printf("i am child, my pid is %d, ret pid is %d\n", getpid() , ret_pid) ;
+        shell();
+        // printf("i am child, my pid is %d, ret pid is %d\n", getpid() , ret_pid) ;
     }
-    // PANIC("init: should not be here");
-    while(1);
+    PANIC("init: should not be here");
 }
 
 void k_thread_a(void* arg UNUSED) {

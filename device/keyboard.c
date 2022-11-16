@@ -194,6 +194,18 @@ static void intr_keyboard_handler(void) {
             uint8_t key_idx = scancode;
             char cur_char = keymap[key_idx][b_shift];
             if(cur_char) { /* 0x0表示error暂不处理 */
+                /**/
+                if(ctrl_down_last){
+                    switch (cur_char) {
+                        case 'u':
+                        case 'l': {
+                            cur_char -= 'a';
+                            break;
+                        }
+                        default:
+                            break;
+                    }
+                }
                 if(!ioq_full(&__kbd_buf)) {
                     ioq_putchar(&__kbd_buf, cur_char);
                 }

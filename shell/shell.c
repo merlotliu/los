@@ -11,6 +11,20 @@ static void readline(char* buf, int count) {
     char* pos = buf;
     while(read(stdin_no, pos, 1) != -1 && (pos - buf) < count) {
         switch (*pos) {
+            case ('l' - 'a'): { /* ctrl + l : clear screen & reserve current input */
+                *pos = 0;
+                clear();
+                print_prompt();
+                printf("%s", buf);
+                break;
+            }
+            case ('u' - 'a'): {
+                while(pos != buf) {
+                    *(pos--) = 0;
+                    putchar('\b');
+                }
+                break;
+            }
             case '\n':
             case '\r':{
                 *pos = 0;
@@ -30,19 +44,21 @@ static void readline(char* buf, int count) {
             }
         }
     }
-    putchar('\n');
+    printf("\nreadline: can't find enter_key in the cmd_line, max num of char is 128\n");
 }
 
 /* 输出命令提示符 */
 void print_prompt(void) {
-    printf("sakura@localhost:%s$", __cwd_cache);
+    printf("sakura@localhost:%s$ ", __cwd_cache);
 }
 
 /* 简单的 shell */
 void shell(void) {
+    __cwd_cache[0] = '/';
     while(1) {
-        print_prompt();
         memset(_cmd_line, 0, MAX_CMD_LEN);
+        
+        print_prompt();
         readline(_cmd_line, MAX_CMD_LEN);
         if(*_cmd_line == 0) {
             continue;
