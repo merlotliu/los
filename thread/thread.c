@@ -5,6 +5,9 @@
 #include "list.h"
 #include "process.h"
 #include "sync.h"
+#include "file.h"
+#include "stdio.h"
+#include "fs.h"
 
 struct task_struct* main_thread; /* main thread PCB */
 struct task_struct* idle_thread; /* idle thread PCB */
@@ -65,8 +68,6 @@ void thread_create(struct task_struct* pthread, thread_func func, void* func_arg
 void thread_attr_init(struct task_struct* pthread, char* name, int priority) {
     memset(pthread, 0, sizeof(*pthread));
     pthread->pid = allocate_pid();
-    put_int(pthread->pid);
-    put_char('\n');
     pthread->ppid = -1;
     strcpy(pthread->name, name);
 
@@ -91,6 +92,7 @@ void thread_attr_init(struct task_struct* pthread, char* name, int priority) {
     }
     
     pthread->pgdir = NULL;
+    pthread->cwd_inode_nr = 0; /* 根目录为默认工作路径 */
     pthread->stack_magic = 0x19990926; /* 定义的魔数，如果该值被覆盖，说明溢出 */
 }
 
@@ -237,4 +239,90 @@ void thread_env_init(void) {
     idle_thread = thread_start("idle", IDLE_THREAD_PRIORITY, idle, NULL);
     
     put_str("thread_env_init done\n");
+}
+
+/* 输出对齐 */
+static void pad_print(char* buf, int buf_len, void* ptr, char format) {
+    bzero(buf, buf_len);
+    int idx = 0;
+    switch (format) {
+    case 's': {
+        idx = sprintf(buf, "%s", ptr);
+        break;
+    }
+    case 'd': {
+        idx = sprintf(buf, "%d", *((uint16_t*)ptr));
+        break;
+    }
+    case 'x': {
+        idx = sprintf(buf, "%d", *((uint32_t*)ptr));
+        break;
+    }
+    default:
+        break;
+    }
+    while(idx < buf_len - 1) {
+        buf[idx++] = ' ';
+    }
+    sys_write(stdout_no, buf, buf_len - 1);
+}
+
+static bool elem2threadinfo(struct list_elem* elem, void* arg UNUSED) {
+    struct task_struct* pthread = elem2entry(struct task_struct, all_list_tag, elem);
+    char buf[16] = {0};
+    pad_print(buf, 16, &pthread->pid, 'd');
+    
+    if(-1 == pthread->ppid) {
+        pad_print(buf, 16, "NULL", 's');
+    } else {
+        pad_print(buf, 16, &pthread->ppid, 'd');
+    }
+    switch (pthread->status) {
+        case TASK_RUNNING : { /* running */
+            pad_print(buf, 16, "TASK_RUNNING", 's');
+            break;
+        }
+        case TASK_READY : { /* reading */
+            pad_print(buf, 16, "TASK_READY", 's');
+            break;
+        }
+        case TASK_BLOCKED : { /* blocked */
+            pad_print(buf, 16, "TASK_BLOCKED", 's');
+            break;
+        }
+        case TASK_WAITING : { /* waiting */
+            pad_print(buf, 16, "TASK_WAITING", 's');
+            break;
+        }
+        case TASK_HANGING : { /* hanging */
+            pad_print(buf, 16, "TASK_HANGING", 's');
+            break;
+        }
+        case TASK_DIED : {
+            pad_print(buf, 16, "TASK_DIED", 's');
+            break;
+        }
+        default: {
+            break;
+        }
+    }
+    pad_print(buf, 16, &pthread->elapsed_ticks, 'x');
+
+    bzero(buf, 16);
+    ASSERT(strlen(pthread->name) < 17);
+    sprintf(buf, "%s\n", pthread->name);
+    sys_write(stdout_no, buf, strlen(buf));
+    return false;
+}
+
+/* print process info */
+void sys_ps(void) {
+    char buf[16] = {0};
+    pad_print(buf, 16, "PID", 's');
+    pad_print(buf, 16, "PPID", 's');
+    pad_print(buf, 16, "STAT", 's');
+    pad_print(buf, 16, "TICKS", 's');
+    pad_print(buf, 16, "COMMAD", 's');
+    printf("\n");
+    list_traversal(&__thread_all_list, elem2threadinfo, NULL);
 }

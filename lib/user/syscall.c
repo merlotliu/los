@@ -82,5 +82,74 @@ void clear(void) {
 
 /* process copy */
 pid_t fork(void) {
-    return _syscall0(SYS_FORK);
+    return (pid_t)_syscall0(SYS_FORK);
+}
+
+/* get current work directory */
+char* getcwd(char* buf, size_t size) {
+    return (char*)_syscall2(SYS_GETCWD, buf, size);
+}
+
+/* open file of pathname with flag */
+int open(char* pathname, uint8_t flag) {
+    return (int)_syscall2(SYS_OPEN, pathname, flag);    
+}
+
+/* close fd */
+int close(int fd) {
+    return (int)_syscall1(SYS_CLOSE, fd);
+}
+
+/* set file seek */
+int lseek(int fd, int offset, uint8_t whence) {
+    return (int)_syscall3(SYS_LSEEK, fd, offset, whence);    
+}
+
+/* delete file pathname */
+int unlink(const char* pathname) {
+    return _syscall1(SYS_UNLINK, pathname);
+}
+
+/* create directory pathname */
+int mkdir(const char* pathname) {
+    return _syscall1(SYS_MKDIR, pathname);
+}
+
+/* open directory name */
+struct dir* opendir(const char* name) {
+    return (struct dir*)_syscall1(SYS_OPENDIR, name);
+}
+
+/* close dir */
+int closedir(struct dir* dir) {
+    return (int)_syscall1(SYS_CLOSEDIR, dir);
+}
+
+/* change dirctory */
+int chdir(const char* path) {
+    return (int)_syscall1(SYS_CHDIR, path);
+}
+
+/* remove directory */
+int rmdir(const char* pathname) {
+    return (int)_syscall1(SYS_RMDIR, pathname);
+}
+/* read directory */
+struct dentry* readdir(struct dir* dir) {
+    return (struct dentry*)_syscall1(SYS_READDIR, dir);
+}
+
+/* rebwind directory pointer */
+void rewinddir(struct dir* dir) {
+    _syscall1(SYS_REWINDDIR, dir);
+}
+
+/* get path's attribute to buf */
+// int stat(const char* path, struct stat* buf) {
+//     return (int)_syscall2(SYS_STAT, path, buf);
+// }
+
+/* list tasks' info */
+void ps(void) {
+    _syscall0(SYS_PS);
 }

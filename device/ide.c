@@ -174,9 +174,9 @@ static void identify_disk(struct disk* hd) {
     sem_wait(&hd->my_channel->disk_done); /* 阻塞自己等待硬盘处理完成后唤醒 */
     
     if(!busy_wait(hd)) { /* error */
-        char error[64];
-        sprintf(error, "%s identify failed!!!!!\n", hd->name);
-        PANIC(error);
+        // char error[64];
+        // sprintf(error, "%s identify failed!!!!!\n", hd->name);
+        // PANIC(error);
     }
 
     read_sectors(hd, id_info, 1);/* 读取硬盘信息 */

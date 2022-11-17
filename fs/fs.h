@@ -33,6 +33,9 @@ struct path_search_record {
     enum file_type p_ftype; /* 找到的文件类型 */
 };
 
+/* 根据 '/' 解析路径名存储在 name, str 之后的路径 */
+char* path_parse(char* pathname, char* name);
+
 /* 返回路径深度，如 '/a/b/c' 和 '///a/b//c' 返回的都是 3 */
 uint32_t path_depth(char* pathname);
 
@@ -59,5 +62,11 @@ ssize_t sys_read(int fd, void* buf, size_t count);
 
 /* 在磁盘上搜索文件系统，若没有则格式化分区创建文件系统 */
 void filesys_init(void);
+
+/* 把当前工作路径绝对路径写入 buf，size 是 buf 的大小，当 buf 为NULL时，由操作系统分配空间，失效返回 NULL */
+char* sys_getcwd(char* buf, size_t size);
+
+/* 更改当前工作目录为绝对路径 path，成功返回 0，失败返回 -1 */
+int sys_chdir(const char* path);
 
 #endif /* __FS_FS_H */

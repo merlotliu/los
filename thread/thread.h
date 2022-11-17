@@ -98,6 +98,8 @@ struct task_struct {
 	uint32_t* pgdir; /* 进程自己页表的虚拟地址，线程为 NULL */
 	struct vaddr_mem_pool userprog_vaddr_mem_pool; /* 用户进程虚拟地址 */
 	mem_bck_desc_t u_bck_descs[MEM_DESC_CNT];
+	
+	uint32_t cwd_inode_nr; /* 进程所在工作目录的 inode 编号 */
 	uint32_t stack_magic; /* 定义的魔数，如果该值被覆盖，说明溢出 */
 };
 /* 获取当前线程 PCB 指针 */
@@ -129,5 +131,8 @@ void schedule(void);
 
 /* init thread environment */
 void thread_env_init(void);
+
+/* print process info */
+void sys_ps(void);
 
 #endif /* __THREAD_THREAD_H */

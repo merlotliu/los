@@ -14,6 +14,17 @@ void memset(void* dst_, uint8_t value, uint32_t size) {
 }
 
 /* 
+ * @brief: 将 dst_ 起始的 size 个字节置为 0 
+ */
+void bzero(void* buf, size_t size) {
+    ASSERT(buf != NULL);
+    uint8_t* dst = (uint8_t*)buf;
+    while(size--) {
+        *dst++ = '\0';
+    }
+}
+
+/* 
  * @brief: 将 src_ 起始的 size 个字节拷贝到 dst_ 
  */
 void memcpy(void* dst_, const void* src_, uint32_t size) {
@@ -75,7 +86,10 @@ uint32_t strlen(const char* str) {
  */
 uint8_t strcmp(const char* s1, const char* s2) {
     ASSERT(s1 != NULL || s2 != NULL);
-    while(*s1 != 0 && *s1++ == *s2++);
+    while(*s1 != 0 && *s1 == *s2) {
+        s1++;
+        s2++;
+    }
     return *s1 < *s2 ? -1 : *s1 > *s2;
 }
 
@@ -130,4 +144,28 @@ uint32_t strchrs(const char* str, uint8_t ch) {
         }
     }
     return ch_cnt;
+}
+
+/* 
+ * @brief: 根据分隔符 delim 对字符串 s 分割，save_ptr 保存下一次分割的起始位置指针
+ * @return: 返回分割符分割的第一个字符串
+ */
+char* strtok_r(char* s, const char delim, char **saveptr) {
+    if(s == NULL) {
+        s = *saveptr;
+    }
+    while(*s != 0 && *s == delim) s++;
+    if(*s == 0) {
+        *saveptr = s;
+        return NULL;
+    }
+    
+    char* end = strchr(s, delim);
+    if(end == NULL) {
+        *saveptr = end;
+        return s;
+    }
+    *end = '\0';
+    *saveptr = end + 1;
+    return s;
 }

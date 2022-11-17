@@ -11,6 +11,11 @@
 void memset(void* dst_, uint8_t value, uint32_t size);
 
 /* 
+ * @brief: 将 dst_ 起始的 size 个字节置为 0 
+ */
+void bzero(void* buf, size_t size);
+
+/* 
  * @brief: 将 src_ 起始的 size 个字节拷贝到 dst_ 
  */
 void memcpy(void* dst_, const void* src_, uint32_t size);
@@ -65,5 +70,11 @@ char* strcat(char* dst_, const char* src_);
  * @return: 返回 ch 的次数
  */
 uint32_t strchrs(const char* str, uint8_t ch);
+
+/* 
+ * @brief: 根据分隔符 delim 对字符串 s 分割，save_ptr 保存下一次分割的起始位置指针
+ * @return: 返回分割符分割的第一个字符串
+ */
+char* strtok_r(char* s, const char delim, char **saveptr);
 
 #endif /* __LIB_STRING_H */

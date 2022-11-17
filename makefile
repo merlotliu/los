@@ -44,7 +44,8 @@ OBJS		= 	$(BUILD_DIR)/main.o \
 				$(BUILD_DIR)/file.o \
 				$(BUILD_DIR)/inode.o \
 				$(BUILD_DIR)/fork.o \
-				$(BUILD_DIR)/shell.o
+				$(BUILD_DIR)/shell.o \
+				$(BUILD_DIR)/cmd_builtin.o
 
 # C
 # kernel
@@ -127,6 +128,9 @@ $(BUILD_DIR)/sync.o: thread/sync.c
 
 # shell
 $(BUILD_DIR)/shell.o: shell/shell.c 
+	$(CC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/cmd_builtin.o: shell/cmd_builtin.c
 	$(CC) $(CFLAGS) $< -o $@
 
 # userprog
