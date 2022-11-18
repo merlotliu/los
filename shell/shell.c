@@ -105,7 +105,9 @@ void shell(void) {
         } else if(strcmp("mkdir", argv[0]) == 0) {
             mkdir_builtin(argc, argv);
         } else if(strcmp("cd", argv[0]) == 0) {
-            cd_builtin(argc, argv);
+            if(cd_builtin(argc, argv) != NULL) {
+                strcpy(__cwd_cache, __final_path);
+            }
         } else if(strcmp("rmdir", argv[0]) == 0) {
             rmdir_builtin(argc, argv);
         } else if(strcmp("rm", argv[0]) == 0) {

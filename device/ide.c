@@ -41,9 +41,6 @@
 #define CMD_READ_SECTOR         0x20    /* 读扇区指令 */
 #define CMD_WRITE_SECTOR        0x30    /* 写扇区指令 */
 
-/* 定义可读写的最大扇区数， 调试用的 */
-#define MAX_LBA_CNT             ((80*1024*1024/512) - 1) /* 只支持80MB 硬盘 */
-
 uint8_t channel_cnt; /* 按硬盘数计算的通道数 */
 struct ide_channel channels[2]; /* 有两个ide通道 */
 
@@ -174,9 +171,9 @@ static void identify_disk(struct disk* hd) {
     sem_wait(&hd->my_channel->disk_done); /* 阻塞自己等待硬盘处理完成后唤醒 */
     
     if(!busy_wait(hd)) { /* error */
-        // char error[64];
-        // sprintf(error, "%s identify failed!!!!!\n", hd->name);
-        // PANIC(error);
+        char error[64];
+        sprintf(error, "%s identify failed!!!!!\n", hd->name);
+        PANIC(error);
     }
 
     read_sectors(hd, id_info, 1);/* 读取硬盘信息 */
@@ -219,6 +216,7 @@ static void partition_scan(struct disk* hd, uint32_t ext_lba) {
                 hd->prim_parts[primary_no].lba_start = ext_lba + partition_table->lba_start;
                 hd->prim_parts[primary_no].sec_cnt = partition_table->sec_cnt;
                 hd->prim_parts[primary_no].my_disk = hd;
+                bzero(hd->logic_parts[primary_no].name, 8);
                 sprintf(hd->prim_parts[primary_no].name, "%s%d", hd->name, primary_no + 1);
                 list_push_back(&partition_list, &hd->prim_parts[primary_no].part_tag);
                 
@@ -228,6 +226,7 @@ static void partition_scan(struct disk* hd, uint32_t ext_lba) {
                 hd->logic_parts[logic_no].lba_start = ext_lba + partition_table->lba_start;
                 hd->logic_parts[logic_no].sec_cnt = partition_table->sec_cnt;
                 hd->logic_parts[logic_no].my_disk = hd;
+                bzero(hd->logic_parts[logic_no].name, 8);
                 sprintf(hd->logic_parts[logic_no].name, "%s%d", hd->name, logic_no + 5);
                 list_push_back(&partition_list, &hd->logic_parts[logic_no].part_tag);
                 
@@ -252,6 +251,7 @@ static bool print_partition_info(struct list_elem* pelem, void* arg UNUSED) {
 /* 从硬盘 hd 读取从 lba 扇区地址开始的 sec_cnt 个扇区到 buf */
 void ide_read(struct disk* hd, uint32_t lba, void* buf, uint32_t sec_cnt) {
     /* 该操作需要加锁，以保证一次只操作同意通道上的一块硬盘 */
+    // printk("%x %x\n", lba, MAX_LBA_CNT);
     ASSERT(lba <= MAX_LBA_CNT);
     ASSERT(sec_cnt > 0);
     locker_lock(&hd->my_channel->locker);
@@ -378,6 +378,7 @@ void ide_init(void) {
             struct disk* hd = channel->devices + dev_no;
             hd->my_channel = channel;
             hd->dev_no = dev_no;
+            bzero(hd->name, 8);
             sprintf(hd->name, "sd%c", 'a' + channel_no * 2 + dev_no);
             identify_disk(hd);
             if(dev_no != 0) { /* 内核本身的硬盘(hd60M.img)不做处理 */

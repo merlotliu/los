@@ -91,7 +91,10 @@ void dentry_create(char* filename, uint32_t inode_no, uint8_t ftype, struct dent
 
 /* 将目录项 dentry 写入父目录 parent_dir 中，io_buf 由主调函数提供 */
 bool dentry_sync(struct dir* parent_dir, struct dentry* dentry,void* io_buf) {
-    
+    ASSERT(parent_dir != NULL);
+    ASSERT(dentry != NULL);
+    ASSERT(io_buf != NULL);
+
     uint8_t bck_idx = 0;
     uint32_t all_bcks[140] = {0};
     while(bck_idx < 12) {

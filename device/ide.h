@@ -9,6 +9,9 @@
 #define MAX_PARTITION_LOGIC_CNT     0x08    /* 最多逻辑分区 */
 #define MAX_PARTITION_CNT           MAX_PARTITION_PRIMARY_CNT + MAX_PARTITION_LOGIC_CNT 
 
+/* 定义可读写的最大扇区数， 调试用的 */
+#define MAX_LBA_CNT             ((80*1024*1024/512) - 1) /* 只支持80MB 硬盘 */
+
 /* partition struct */
 struct partition {
     uint32_t lba_start; /* 起始扇区 */

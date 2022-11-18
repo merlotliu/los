@@ -7,10 +7,12 @@
 void ps_builtin(int agrc, char** argv);
 
 void ls_builtin(int argc, char** argv UNUSED) ;
+
 void pwd_builtin(int argc, char** argv UNUSED) ;
+
 void clear_builtin(int argc, char** argv UNUSED) ;
 
-void mkdir_builtin(int argc, char** argv UNUSED) ;
+int mkdir_builtin(int argc, char** argv) ;
 
 /* 将 path 处理成绝对路径 */
 void path2abs(const char* path, char* abs_path);

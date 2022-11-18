@@ -35,13 +35,12 @@ void syscall_init(void) {
     syscall_table[SYS_PUTCHAR] = sys_putchar;
     syscall_table[SYS_CLEAR] = cls_screen;
     syscall_table[SYS_FORK] = sys_fork;
-
     syscall_table[SYS_GETCWD] = sys_getcwd;
     // syscall_table[SYS_OPEN];
     // syscall_table[SYS_CLOSE];
     // syscall_table[SYS_LSEEK];
     // syscall_table[SYS_UNLINK];
-    // syscall_table[SYS_MKDIR];
+    syscall_table[SYS_MKDIR] = sys_mkdir;
     // syscall_table[SYS_OPENDIR];
     // syscall_table[SYS_CLOSEDIR];
     syscall_table[SYS_CHDIR] = sys_chdir;
@@ -49,7 +48,6 @@ void syscall_init(void) {
     // syscall_table[SYS_READDIR];
     // syscall_table[SYS_REWINDDIR];
     // syscall_table[SYS_STAT];
-
     syscall_table[SYS_PS] = sys_ps;
     put_str("syscall_init done\n");
 }

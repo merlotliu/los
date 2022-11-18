@@ -5,43 +5,6 @@
 
 extern char __final_path[MAX_PATH_LEN];
 
-/* ps builtin cmd */
-void ps_builtin(int argc, char** argv UNUSED) {
-    if(argc != 1) {
-        printf("ps: no argument support!\n");
-        return;
-    }
-    ps();
-}
-
-void ls_builtin(int argc UNUSED, char** argv UNUSED) {
-    printf("ls\n");
-}
-
-void pwd_builtin(int argc, char** argv UNUSED) {
-    if(argc != 1) {
-        printf("clear: no argument support!\n");
-        return;
-    }
-    if(NULL == getcwd(__final_path, MAX_PATH_LEN)) {
-        printf("pwd: get current work directory failed.\n");
-        return;
-    } 
-    printf("%s\n", __final_path);
-}
-
-void clear_builtin(int argc, char** argv UNUSED) {
-    if(argc != 1) {
-        printf("clear: no argument support!\n");
-        return;
-    }
-    clear();
-}
-
-void mkdir_builtin(int argc UNUSED, char** argv UNUSED) {
-    printf("mkdir\n");
-}
-
 /* 去掉路径中的 '.' 和 '..' */
 static void path_wash(char* old_abs_path, char* new_abs_path) {
     ASSERT('/' == *old_abs_path);
@@ -97,6 +60,56 @@ void path2abs(const char* path, char* abs_path) {
     }
     strcat(buf, path);
     path_wash(buf, abs_path);
+}
+
+/* ps builtin cmd */
+void ps_builtin(int argc, char** argv UNUSED) {
+    if(argc != 1) {
+        printf("ps: no argument support!\n");
+        return;
+    }
+    ps();
+}
+
+void ls_builtin(int argc UNUSED, char** argv UNUSED) {
+    printf("ls\n");
+}
+
+void pwd_builtin(int argc, char** argv UNUSED) {
+    if(argc != 1) {
+        printf("clear: no argument support!\n");
+        return;
+    }
+    if(NULL == getcwd(__final_path, MAX_PATH_LEN)) {
+        printf("pwd: get current work directory failed.\n");
+        return;
+    } 
+    printf("%s\n", __final_path);
+}
+
+void clear_builtin(int argc, char** argv UNUSED) {
+    if(argc != 1) {
+        printf("clear: no argument support!\n");
+        return;
+    }
+    clear();
+}
+
+int mkdir_builtin(int argc, char** argv) {
+    /* 仅支持 命令 + 路径 2 个参数：先生成绝对路径，然后在绝对路径不为'/'根目录的情况下，创建目录 */    
+    if(argc == 2) {
+        path2abs(argv[1], __final_path);
+        if(strcmp("/", __final_path) != 0) {
+            if(mkdir(__final_path) == 0) {
+                return 0;
+            } else {
+                printf("mkdir: create directory %s failed.\n", argv[1]);
+            }
+        }
+    } else {
+        printf("mkdir: only support 1 argument!\n") ;
+    }
+    return -1;
 }
 
 /* change dirctory, 返回切换后的路径，失败返回 NULL */

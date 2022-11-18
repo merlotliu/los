@@ -187,16 +187,16 @@ static bool mount_partition(struct list_elem* pelem, void* arg) {
 
 /* 根据 '/' 解析路径名存储在 name, str 之后的路径 */
 char* path_parse(char* pathname, char* name) {
-    if(pathname == NULL) {
+    if(pathname == NULL || *pathname == 0) {
         return NULL;
     }
-    while(*pathname == '/') pathname++; /* 跳过开头连续的 '/' 即根目录 */
+    while(*pathname != 0 && *pathname == '/') pathname++; /* 跳过开头连续的 '/' 即根目录 */
     char* ptr = pathname;
     while(*ptr != 0 && *ptr != '/') {
         *name++ = *ptr++;
     }
     ASSERT((uint8_t)(ptr - pathname) <= MAX_FILE_NAME_LEN);
-    return pathname;
+    return ptr;
 }
 
 /* 返回路径深度，如 '/a/b/c' 和 '///a/b//c' 返回的都是 3 */
@@ -659,7 +659,7 @@ void filesys_init(void) {
                 dev_no++;
                 continue;
             }
-   
+
             struct disk* hd = channels[channel_no].devices + dev_no;
             struct partition *cur_part = hd->prim_parts;
             uint8_t max_part_cnt = MAX_PARTITION_CNT;
@@ -667,18 +667,16 @@ void filesys_init(void) {
                 if(part_idx == 4) { /* logic partition */
                    cur_part = hd->logic_parts;
                 }
-
                 if(cur_part->sec_cnt != 0) {
-                    memset(sb_buf, 0, SECTOR_SIZE);
-                    ide_read(hd, cur_part->lba_start + 1, sb_buf, 1);
-                    
-                    if(SUPER_BLOCK_MAGIC == sb_buf->s_magic) {
-                        /* 已存在文件系统 */
-                        printk("%s has file system\n", cur_part->name);
-                    } else {
-                        printk("formatting %s's partition %s\n", hd->name, cur_part->name);
-                        partition_format(cur_part);
-                    }
+                    // memset(sb_buf, 0, SECTOR_SIZE);
+                    // ide_read(hd, cur_part->lba_start + 1, sb_buf, 1);
+                    // if(SUPER_BLOCK_MAGIC == sb_buf->s_magic) {
+                    //     /* 已存在文件系统 */
+                    //     printk("%s has file system\n", cur_part->name);
+                    // } else {
+                    //     printk("formatting %s's partition %s\n", hd->name, cur_part->name);
+                    //     partition_format(cur_part);
+                    // }
                 }
                 part_idx++;
                 cur_part++;
@@ -719,47 +717,161 @@ static uint32_t get_parent_dir_inode_nr(uint32_t child_inode_nr, void* io_buf) {
 /* 在inode 编号为 parent_inode_nr 的目录下查找 inode 编号为 child_inode_nr 的子目录名，将名称存入 name，成功返回 0，失败返回 -1 */
 static int get_child_dir_name(uint32_t parent_inode_nr, uint32_t child_inode_nr, char* name, void* io_buf) {
     struct inode* parent_dir_inode = inode_open(__cur_part, parent_inode_nr);
-    uint32_t* parent_bcks = parent_dir_inode->i_sectors;
     uint32_t all_bcks[140] = {0};
     uint8_t bck_idx = 0;
     uint8_t bck_cnt = 12;
     while(bck_idx < 12) {
-        all_bcks[bck_idx] = parent_bcks[bck_idx];
+        all_bcks[bck_idx] = parent_dir_inode->i_sectors[bck_idx];
         bck_idx++;
     }
-    if(parent_bcks[12] != 0) {
-        ide_read(__cur_part->my_disk, parent_bcks[12], all_bcks + 12, 1);
+    if(parent_dir_inode->i_sectors[12] != 0) {
+        ide_read(__cur_part->my_disk, parent_dir_inode->i_sectors[12], all_bcks + 12, 1);
         bck_cnt = 140;
-        inode_close(parent_dir_inode);
     }
-
+    inode_close(parent_dir_inode);
+    
     bck_idx = 0;
+    struct dentry* dentry = (struct dentry*)io_buf;
     uint32_t dentry_size_per_bck = (BLOCK_SIZE / __cur_part->sb->s_dentry_size);
     while(bck_idx < bck_cnt) {
-        if(all_bcks[bck_idx] == 0) {
-            continue;
-        }
-        ide_read(__cur_part->my_disk, all_bcks[bck_idx], io_buf, 1);
-        uint32_t dentry_idx = 0;
-        while(dentry_idx < dentry_size_per_bck) {
-            struct dentry* dentry = (struct dentry*)io_buf;
-            if(dentry->d_inode == child_inode_nr) {
-                strcat(name, "/");
-                strcat(name, dentry->d_filename);
-                return 0;
+        if(all_bcks[bck_idx] != 0) {
+            ide_read(__cur_part->my_disk, all_bcks[bck_idx], io_buf, 1);
+            uint32_t dentry_idx = 0;
+            while(dentry_idx < dentry_size_per_bck) {
+                // printk("%d %d %s\n", bck_idx, dentry->d_inode, dentry->d_filename);
+                if(dentry->d_inode == child_inode_nr) {
+                    strcat(name, "/");
+                    strcat(name, dentry->d_filename);
+                    return 0;
+                }
+                dentry++;
+                dentry_idx++;
             }
-            dentry++;
-            dentry_idx++;
         }
         bck_idx++;
     }
     return -1;
 }
 
+/* 创建目录 pathname，成功返回 0，失败返回 -1 */
+int sys_mkdir(const char* pathname) {
+    /*  1. 确认待创建的目录是否存在；
+        2. 为新目录创建 inode；
+        3. 为新目录分配 1 个块存储该目录中的目录项；
+        4. 为新目录中创建两个目录项 '.' 和 '..' 这是每个目录都存在的目录项；
+        5. 在新目录的父目录中添加新目录的目录项；
+        6. 将以上资源变更同步到硬盘；
+    */
+    uint8_t rollback_step = 0; /* 用于失败时的回滚操作 */
+    void* io_buf = sys_malloc(SECTOR_SIZE * 2);
+    if(NULL == io_buf) {
+        printk("sys_mkdir : sys_malloc for io_buf failed\n");
+        return -1;
+    }
+
+    struct path_search_record searched_record;
+    bzero(&searched_record, sizeof(struct path_search_record));
+    int inode_no = file_search(pathname, &searched_record);
+    if(inode_no != -1) { /* 存在同名目录或文件 */
+        printk("sys mkdir: file or directory %s exist!\n", pathname);
+        rollback_step = 1;
+        goto rollback;
+    } else {
+        /* 判断待创建的目录的上级目录都存在 */
+        uint32_t d1 = path_depth((char*)pathname);
+        printk("%d\n", d1);
+        uint32_t d2 = path_depth(searched_record.searched_path);
+        printk("%d\n", d2);
+        if(d1 != d2) { 
+            /* 中间有目录不存在 */
+            printk("sys_mkdir : cannot access %s: Not a directory, subpath %s is't exist\n", pathname, searched_record.searched_path);
+            rollback_step = 1;
+            goto rollback;
+        }
+        
+        /* 以下开始创建目录 */
+        /* 先获取最后一级，即创建目录的名字 */
+        char* dirname = strrchr(searched_record.searched_path, '/') + 1;
+
+        inode_no = inode_bitmap_alloc(__cur_part);
+        if(-1 == inode_no) {
+            printk("sys_mkdir: allocate inode failed\n");
+            rollback_step = 1;
+            goto rollback;
+        }
+
+        struct inode new_dir_inode;
+        inode_init(inode_no, &new_dir_inode);
+
+        /* 分配一个块用于写入 '.' 和 "." */
+        int bck_lba = block_bitmap_alloc(__cur_part);
+        if(-1 == bck_lba) {
+            printk("sys_mkdir: block bitmap_alloc for create directory failed\n");
+            rollback_step = 2;
+            goto rollback;
+        }
+        /* 同步位图到硬盘 */
+        new_dir_inode.i_sectors[0] = bck_lba;
+        bitmap_sync(__cur_part, bck_lba - __cur_part->sb->data_lba_start, BLOCK_BITMAP);
+        /* 将 '.' 和 ".." 写入目录 */
+        bzero(io_buf, SECTOR_SIZE * 2);
+        struct dentry* dentry = (struct dentry*)io_buf;
+        /* 初始化 '.' */
+        strcpy(dentry->d_filename, ".");
+        dentry->d_ftype = FT_DIRECTORY;
+        dentry->d_inode = inode_no;
+        /* 初始化 '..' */
+        dentry++;
+        strcpy(dentry->d_filename, "..");
+        dentry->d_ftype = FT_DIRECTORY;
+        dentry->d_inode = searched_record.parent_dir->d_inode->i_no;
+        
+        ide_write(__cur_part->my_disk, bck_lba, io_buf, 1);
+        new_dir_inode.i_size = __cur_part->sb->s_dentry_size * 2;
+
+        /* 在父目录中添加自己的目录项 */
+        struct dentry new_dentry;
+        bzero(&new_dentry, sizeof(struct dentry));
+        dentry_create(dirname, inode_no, FT_DIRECTORY, &new_dentry);
+        bzero(io_buf, SECTOR_SIZE * 2);
+        if(false == dentry_sync(searched_record.parent_dir, &new_dentry, io_buf)) {
+            printk("sys_mkdir: sync_dir_entry to disk failed!\n") ;
+            rollback_step = 2;
+            goto rollback;
+        }
+        /* 将父目录 inode 同步到硬盘 */
+        bzero(io_buf, SECTOR_SIZE * 2);
+        inode_sync(__cur_part, searched_record.parent_dir->d_inode, io_buf);
+        /* 同步新 inode 到硬盘 */
+        bzero(io_buf, SECTOR_SIZE * 2);
+        inode_sync(__cur_part, &new_dir_inode, io_buf);
+        /* 同步 inode 位图*/
+        bitmap_sync(__cur_part, inode_no, INODE_BITMAP);
+    }
+    dir_close(searched_record.parent_dir);
+    sys_free(io_buf);
+    printk("sys_mkdir: create %s success\n", pathname) ;
+    return 0;
+
+/* 失败返回前的回滚 */
+rollback:
+    switch (rollback_step) {
+        case 2: {
+            /* inode 位图恢复 */
+            bitmap_set(&__cur_part->inode_btp, inode_no, 0);
+        }
+        case 1: {
+            dir_close(searched_record.parent_dir);
+            break;
+        }
+    }
+    sys_free(io_buf);
+    return -1;
+}
+
 /* 把当前工作路径绝对路径写入 buf，size 是 buf 的大小，当 buf 为NULL时，由操作系统分配空间，失效返回 NULL */
 char* sys_getcwd(char* buf, size_t size) {
     ASSERT(buf != NULL);
-    bzero(buf, size);
 
     void* io_buf = sys_malloc(SECTOR_SIZE);
     if(io_buf == NULL) {
@@ -768,29 +880,31 @@ char* sys_getcwd(char* buf, size_t size) {
 
     int32_t child_inode_nr = thread_running()->cwd_inode_nr;
     ASSERT(child_inode_nr >= 0 && child_inode_nr < 4096) ;
+    bzero(buf, size);
     if(child_inode_nr == 0) { /* 根目录 */
         *buf = '/';
         return buf;
     }
-
     /* 从下往上找服务路，直到根目录 */
     char rpath[MAX_PATH_LEN] = {0}; /* reverse path be like '/a/bc', the right order is '/bc/a  */
     int32_t parent_inode_nr;
     while(child_inode_nr != 0) {
         parent_inode_nr = get_parent_dir_inode_nr(child_inode_nr, io_buf);
+        // printk("%d %d\n", child_inode_nr, parent_inode_nr);
         if(-1 == get_child_dir_name(parent_inode_nr, child_inode_nr, rpath, io_buf)) {
             sys_free(io_buf);
             return NULL;
         }
         child_inode_nr = parent_inode_nr;
     }
-
+    // printk("%s\n", rpath);
     /* 反转路径 ： 每次找到最后一个 '/', 将后面的字符串拷贝到缓冲区，并将 '/'的位置置为 '\0'，直到找不到 '/' */
     char* rslash = NULL;
     while((rslash = strrchr(rpath, '/')) != NULL) {
-        strcat(buf, rslash + 1);
+        strcat(buf, rslash);
         *rslash = '\0';
     }
+
     sys_free(io_buf);
     return buf;
 } 

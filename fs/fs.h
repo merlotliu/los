@@ -63,6 +63,9 @@ ssize_t sys_read(int fd, void* buf, size_t count);
 /* 在磁盘上搜索文件系统，若没有则格式化分区创建文件系统 */
 void filesys_init(void);
 
+/* 创建目录 pathname，成功返回 0，失败返回 -1 */
+int sys_mkdir(const char* pathname);
+
 /* 把当前工作路径绝对路径写入 buf，size 是 buf 的大小，当 buf 为NULL时，由操作系统分配空间，失效返回 NULL */
 char* sys_getcwd(char* buf, size_t size);
 
