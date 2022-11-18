@@ -64,7 +64,6 @@ struct inode* inode_open(struct partition* part, uint32_t inode_no) {
         inode = elem2entry(struct inode, i_tag, elem);
         inode->i_count++;
     } else {
-    
         /* 从磁盘读取 inode */
         struct inode_position inode_pos;
         inode_locate(part, inode_no, &inode_pos);
@@ -123,4 +122,61 @@ void inode_init(uint32_t inode_no, struct inode* new_inode) {
     while(sec_idx < 13) {
         new_inode->i_sectors[sec_idx++] = 0;
     }
+}
+
+/* 将 part 上的 inode_no 对应的 inode 清空 */
+void inode_delete(struct partition* part, uint32_t inode_no, void* io_buf) {
+    ASSERT(inode_no < 4096);
+
+    struct inode_position inode_pos;
+    bzero(&inode_pos, sizeof(struct inode_position));
+    inode_locate(part, inode_no, &inode_pos);
+    ASSERT(inode_pos.sec_lba_base <= part->lba_start + part->sec_cnt);
+
+    char* buf = (char*)io_buf;
+    ide_read(part->my_disk, inode_pos.sec_lba_base, buf, inode_pos.sec_cnt);
+    bzero(buf + inode_pos.off_size, sizeof(struct inode));
+    ide_write(part->my_disk, inode_pos.sec_lba_base, buf, inode_pos.sec_cnt);
+}
+
+/* 回收 inode 数据块及其本身 */
+void inode_release(struct partition* part, uint32_t inode_no) {
+    /* 1. 回收 inode 占用的所有块； */
+    struct inode* inode = inode_open(part, inode_no);
+    ASSERT(inode->i_no == inode_no);
+    
+    uint8_t bck_idx = 0;
+    uint8_t bck_cnt = 12;
+    uint32_t bck_btmp_idx = 0;
+    uint32_t all_bcks[140] = {0};
+    /* 1.1 记录 12 个直接块 */
+    while(bck_idx < 12) {
+        all_bcks[bck_idx] = inode->i_sectors[bck_idx];
+        bck_idx++;
+    }
+    /* 1.2 如果一级间接表存在，记录 128 个间接块地址，并释放一级间接块索引表地址 */
+    if(inode->i_sectors[12] != 0) {
+        ide_read(part->my_disk, inode->i_sectors[12], all_bcks + 12, 1);
+        bck_cnt = 140;
+
+        bck_btmp_idx = inode->i_sectors[12] - part->sb->data_lba_start;
+        ASSERT(bck_btmp_idx > 0);
+        bitmap_set(&part->bck_btmp, bck_btmp_idx, 0);
+        bitmap_sync(part, bck_btmp_idx, BLOCK_BITMAP);
+    }
+    /* 1.3 遍历记录的块，逐个回收 */
+    for(bck_idx = 0; bck_idx < bck_cnt; bck_idx++) {
+        if(all_bcks[bck_idx] != 0) {
+            bck_btmp_idx = 0;
+            bck_btmp_idx = all_bcks[bck_idx] - part->sb->data_lba_start;
+            ASSERT(bck_btmp_idx > 0);
+            bitmap_set(&part->bck_btmp, bck_btmp_idx, 0);
+            bitmap_sync(part, bck_btmp_idx, BLOCK_BITMAP);
+        }
+    }
+    /* 2. 回收 inode 占用的 inode（不需要将指向的块清零，把位图记录为为使用，之后再用会把数据覆盖） */
+    bitmap_set(&part->inode_btmp, inode_no, 0);
+    bitmap_sync(part, inode_no, INODE_BITMAP);
+
+    inode_close(inode);
 }

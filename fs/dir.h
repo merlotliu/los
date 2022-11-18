@@ -43,4 +43,13 @@ void dentry_create(char* filename, uint32_t inode_no, uint8_t ftype, struct dent
 /* 将目录项 dentry 写入父目录 parent_dir 中，io_buf 由主调函数提供 */
 bool dentry_sync(struct dir* parent_dir, struct dentry* dentry,void* io_buf);
 
+/* 删除 parent_dir 中的 inode_no 对应的目录项 */
+bool dentry_delete(struct partition* part, struct dir* parent_dir, uint32_t inode_no, void* io_buf);
+
+/* 判断目录是否为空(1 空 0 非空)： 仅含有 . 和 .. 两个目录（那么inode所指向的数据大小应该是两个目录项的大小） */
+int dir_is_empty(struct dir* dir);
+
+/* 在父目录 parent_dir 中删除 child_dir */
+int dir_remove(struct dir* parent_dir, struct dir* child_dir);
+
 #endif /* __FS_DIR_H */

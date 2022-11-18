@@ -20,7 +20,7 @@ void path2abs(const char* path, char* abs_path);
 /* change dirctory, 返回切换后的路径，失败返回 NULL */
 char* cd_builtin(int argc, char** argv);
 
-void rmdir_builtin(int argc, char** argv UNUSED) ;
+int rmdir_builtin(int argc, char** argv UNUSED) ;
 
-void rm_builtin(int argc, char** argv UNUSED) ;
+int rm_builtin(int argc, char** argv UNUSED) ;
 #endif /* __SHELL_CMD_BUILTIN_H */

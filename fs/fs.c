@@ -162,20 +162,20 @@ static bool mount_partition(struct list_elem* pelem, void* arg) {
         memcpy(part->sb, sb_buf, sizeof(struct super_block));
 
         /* 2 读入块位图到内存 */
-        part->bck_btp.bits = (uint8_t*)sys_malloc(sb_buf->bck_btmp_sec_cnt * SECTOR_SIZE);
-        if(part->bck_btp.bits == NULL) {
+        part->bck_btmp.bits = (uint8_t*)sys_malloc(sb_buf->bck_btmp_sec_cnt * SECTOR_SIZE);
+        if(part->bck_btmp.bits == NULL) {
             PANIC("allocate memory failed!");
         }
-        part->bck_btp.btmp_bytes_len = sb_buf->bck_btmp_sec_cnt * SECTOR_SIZE;
-        ide_read(hd, sb_buf->bck_btmp_lba_base, part->bck_btp.bits, sb_buf->bck_btmp_sec_cnt);
+        part->bck_btmp.btmp_bytes_len = sb_buf->bck_btmp_sec_cnt * SECTOR_SIZE;
+        ide_read(hd, sb_buf->bck_btmp_lba_base, part->bck_btmp.bits, sb_buf->bck_btmp_sec_cnt);
 
         /* 3 读入 inode 位图到内存 */
-        part->inode_btp.bits = (uint8_t*)sys_malloc(sb_buf->inode_btmp_sec_cnt * SECTOR_SIZE);
-        if(part->inode_btp.bits == NULL) {
+        part->inode_btmp.bits = (uint8_t*)sys_malloc(sb_buf->inode_btmp_sec_cnt * SECTOR_SIZE);
+        if(part->inode_btmp.bits == NULL) {
             PANIC("allocate memory failed!");
         }
-        part->inode_btp.btmp_bytes_len = sb_buf->inode_btmp_sec_cnt * SECTOR_SIZE;
-        ide_read(hd, sb_buf->inode_btmp_lba_base, part->inode_btp.bits, sb_buf->inode_btmp_sec_cnt);
+        part->inode_btmp.btmp_bytes_len = sb_buf->inode_btmp_sec_cnt * SECTOR_SIZE;
+        ide_read(hd, sb_buf->inode_btmp_lba_base, part->inode_btmp.bits, sb_buf->inode_btmp_sec_cnt);
 
         list_init(&part->open_inodes);
         printk("mount %s done!\n", part->name);
@@ -350,7 +350,7 @@ rollback:
             sys_free(new_file_inode);
         }
         case 1: {
-            bitmap_set(&__cur_part->inode_btp, inode_no, 0);
+            bitmap_set(&__cur_part->inode_btmp, inode_no, 0);
             break;
         }
         default: {
@@ -668,15 +668,15 @@ void filesys_init(void) {
                    cur_part = hd->logic_parts;
                 }
                 if(cur_part->sec_cnt != 0) {
-                    // memset(sb_buf, 0, SECTOR_SIZE);
-                    // ide_read(hd, cur_part->lba_start + 1, sb_buf, 1);
-                    // if(SUPER_BLOCK_MAGIC == sb_buf->s_magic) {
-                    //     /* 已存在文件系统 */
-                    //     printk("%s has file system\n", cur_part->name);
-                    // } else {
-                    //     printk("formatting %s's partition %s\n", hd->name, cur_part->name);
-                    //     partition_format(cur_part);
-                    // }
+                    memset(sb_buf, 0, SECTOR_SIZE);
+                    ide_read(hd, cur_part->lba_start + 1, sb_buf, 1);
+                    if(SUPER_BLOCK_MAGIC == sb_buf->s_magic) {
+                        /* 已存在文件系统 */
+                        printk("%s has file system\n", cur_part->name);
+                    } else {
+                        printk("formatting %s's partition %s\n", hd->name, cur_part->name);
+                        partition_format(cur_part);
+                    }
                 }
                 part_idx++;
                 cur_part++;
@@ -858,7 +858,7 @@ rollback:
     switch (rollback_step) {
         case 2: {
             /* inode 位图恢复 */
-            bitmap_set(&__cur_part->inode_btp, inode_no, 0);
+            bitmap_set(&__cur_part->inode_btmp, inode_no, 0);
         }
         case 1: {
             dir_close(searched_record.parent_dir);
@@ -867,6 +867,42 @@ rollback:
     }
     sys_free(io_buf);
     return -1;
+}
+
+/* 删除空目录，成功返回 0，失败返回 -1 */
+int sys_rmdir(const char* pathname) {
+    /* 查找待删除文件 */
+    struct path_search_record searched_record;
+    bzero(&searched_record, sizeof(struct path_search_record));
+    int inode_no = file_search(pathname, &searched_record);
+    int ret = -1;
+    if(-1 == inode_no) {
+        printk("In %s, sub path %s not exist\n", pathname, searched_record.searched_path);
+    } else {
+        switch (searched_record.p_ftype) {
+            case FT_REGULAR: {
+                printk("%s is regular file!\n", pathname);
+                break;
+            }
+            case FT_DIRECTORY: {
+                struct dir* dir = dir_open(__cur_part, inode_no);
+                if(dir_is_empty(dir) == 0) {
+                    printk("dir %s is not empty, it is not allowed to delete a nonempty directory!\n", pathname);
+                } else {
+                    if(dir_remove(searched_record.parent_dir, dir) == 0) {
+                        ret = 0;
+                    }
+                }
+                dir_close(dir);
+                break;
+            }
+            default: {
+                break;
+            }
+        }
+    }
+    dir_close(searched_record.parent_dir);
+    return ret;
 }
 
 /* 把当前工作路径绝对路径写入 buf，size 是 buf 的大小，当 buf 为NULL时，由操作系统分配空间，失效返回 NULL */
@@ -931,16 +967,16 @@ int sys_chdir(const char* path) {
 int sys_stat(const char* pathname, struct stat* buf) {
     /* 根目录 */
     if(1) {
-        buf->st_ftype = FT_DIRECTORY;
         buf->st_inode_no = 0;
-        buf->st_size = __root_dir.d_inode;
+        buf->st_ftype = FT_DIRECTORY;
+        buf->st_size = __root_dir.d_inode->i_size;
         return 0;
     }
 
     /* 找到文件 inode 号，获取对应信息 */
     struct path_search_record searched_record;
     bzero(&searched_record, sizeof(struct path_search_record));
-    int inode_no = file_search(__cur_part, &searched_record);
+    int inode_no = file_search(pathname, &searched_record);
     int ret = -1;
     if(-1 == inode_no) {
         printk("sys_stat : %s not found\n", pathname);

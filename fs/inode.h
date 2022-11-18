@@ -16,4 +16,10 @@ void inode_close(struct inode* inode);
 /* 初始化新的 inode 节点 */
 void inode_init(uint32_t inode_no, struct inode* new_inode);
 
+/* 将 part 上的 inode_no 对应的 inode 清空 */
+void inode_delete(struct partition* part, uint32_t inode_no, void* io_buf);
+
+/* 回收 inode 数据块及其本身 */
+void inode_release(struct partition* part, uint32_t inode_no);
+
 #endif /* __FS_INODE_H */

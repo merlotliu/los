@@ -137,10 +137,34 @@ char* cd_builtin(int argc, char** argv) {
     return __final_path;
 }
 
-void rmdir_builtin(int argc UNUSED, char** argv UNUSED) {
-    printf("rmdir\n");
+int rmdir_builtin(int argc UNUSED, char** argv UNUSED) {
+    if(argc == 2) {
+        path2abs(argv[1], __final_path);
+        if(strcmp("/", __final_path) != 0) { /* 不能删除根目录 */
+            if(rmdir(__final_path) == 0) {
+                return 0;
+            } else {
+                printf("rmdir: remove directory %s failed.\n", argv[1]);
+            }
+        }
+    } else {
+        printf("rmdir: only support 1 argument!\n") ;
+    }
+    return -1;
 }
 
-void rm_builtin(int argc UNUSED, char** argv UNUSED) {
-    printf("rm\n");
+int rm_builtin(int argc UNUSED, char** argv UNUSED) {
+    if(argc == 2) {
+        path2abs(argv[1], __final_path);
+        if(strcmp("/", __final_path) != 0) { /* 不能删除根目录 */
+            if(unlink(__final_path) == 0) {
+                return 0;
+            } else {
+                printf("rm: remove directory %s failed.\n", argv[1]);
+            }
+        }
+    } else {
+        printf("rm: only support 1 argument!\n") ;
+    }
+    return -1;
 }

@@ -45,21 +45,21 @@ int32_t pcb_fd_install(int32_t global_fd_idx) {
 
 /* 分配一个 inode 节点， 并返回 inode 号 */
 int32_t inode_bitmap_alloc(struct partition* part) {
-    int32_t bit_idx = bitmap_scan(&part->inode_btp, 1);
+    int32_t bit_idx = bitmap_scan(&part->inode_btmp, 1);
     if(bit_idx == -1) {
         return -1;
     }
-    bitmap_set(&part->inode_btp, bit_idx, 1);
+    bitmap_set(&part->inode_btmp, bit_idx, 1);
     return bit_idx;
 }
 
 /* 分配一个扇区， 并返回扇区 lba 绝对地址 */
 int32_t block_bitmap_alloc(struct partition* part) {
-    int32_t bit_idx = bitmap_scan(&part->bck_btp, 1);
+    int32_t bit_idx = bitmap_scan(&part->bck_btmp, 1);
     if(bit_idx == -1) {
         return -1;
     }
-    bitmap_set(&part->bck_btp, bit_idx, 1);
+    bitmap_set(&part->bck_btmp, bit_idx, 1);
     return (bit_idx + part->sb->data_lba_start);
 }
 
@@ -76,12 +76,12 @@ void bitmap_sync(struct partition* part, uint32_t bit_idx, uint8_t btmp) {
     switch (btmp) {
         case INODE_BITMAP: {
             sec_lba = part->sb->inode_btmp_lba_base + off_sec;
-            btmp_off = part->inode_btp.bits + off_size;
+            btmp_off = part->inode_btmp.bits + off_size;
             break;
         }
         case BLOCK_BITMAP: {
             sec_lba = part->sb->bck_btmp_lba_base + off_sec;
-            btmp_off = part->bck_btp.bits + off_size;
+            btmp_off = part->bck_btmp.bits + off_size;
             break;
         }
         default: {

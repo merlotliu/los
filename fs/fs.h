@@ -73,6 +73,9 @@ void filesys_init(void);
 /* 创建目录 pathname，成功返回 0，失败返回 -1 */
 int sys_mkdir(const char* pathname);
 
+/* 删除空目录，成功返回 0，失败返回 -1 */
+int sys_rmdir(const char* pathname);
+
 /* 把当前工作路径绝对路径写入 buf，size 是 buf 的大小，当 buf 为NULL时，由操作系统分配空间，失效返回 NULL */
 char* sys_getcwd(char* buf, size_t size);
 

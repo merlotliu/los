@@ -129,7 +129,7 @@ bool dentry_sync(struct dir* parent_dir, struct dentry* dentry,void* io_buf) {
                 bck_lba = block_bitmap_alloc(__cur_part);
                 if(bck_lba == -1) {
                     bck_btmp_idx = parent_dir->d_inode->i_sectors[bck_idx] - __cur_part->sb->data_lba_start;
-                    bitmap_set(&__cur_part->bck_btp, bck_btmp_idx, 0);
+                    bitmap_set(&__cur_part->bck_btmp, bck_btmp_idx, 0);
                     parent_dir->d_inode->i_sectors[bck_idx] = 0;
                     printk("alloc block bitmap for sync_dir_entry failed\n ") ;
                     return false;
@@ -169,4 +169,125 @@ bool dentry_sync(struct dir* parent_dir, struct dentry* dentry,void* io_buf) {
     }
     printk("directory is full!\n");
     return false;
+}
+
+/* 删除 parent_dir 中的 inode_no 对应的目录项 */
+bool dentry_delete(struct partition* part, struct dir* parent_dir, uint32_t inode_no, void* io_buf) {
+    ASSERT(io_buf != NULL);
+
+    uint8_t bck_idx = 0;
+    uint8_t bck_cnt = 12;
+    uint32_t all_bcks[140] = {0};
+    while(bck_idx < 12) {
+        all_bcks[bck_idx] = parent_dir->d_inode->i_sectors[bck_idx];
+        bck_idx++;
+    }
+    if(parent_dir->d_inode->i_sectors[12] != 0) {
+        ide_read(__cur_part->my_disk, parent_dir->d_inode->i_sectors[12], all_bcks + 12, 1);
+        bck_cnt = 140;
+    }
+    bool is_dir_first_bck = false;
+    struct dentry* dentry_table = (struct dentry*)io_buf;
+    struct dentry* dentry_obj = NULL;
+    uint32_t dentry_idx = 0;
+    uint32_t dentry_cnt = 0;
+    for(bck_idx = 0; bck_idx < bck_cnt; bck_idx++) {
+        if(all_bcks[0] != 0) {
+            /* 读取当前块（一个扇区）的内容 */
+            bzero(io_buf, SECTOR_SIZE);
+            ide_read(__cur_part->my_disk, all_bcks[0], io_buf, 1);
+
+            for(dentry_idx = 0; dentry_idx < (SECTOR_SIZE / sizeof(struct dentry)); dentry_idx++) {
+                if(FT_UNKNOWN != (dentry_table + dentry_idx)->d_ftype) {
+                    if(0 == strcmp(".", (dentry_table + dentry_idx)->d_filename)) {
+                        is_dir_first_bck = true;
+                    } else if (strcmp(".", (dentry_table + dentry_idx)->d_filename) != 0
+                        && strcmp("..", (dentry_table + dentry_idx)->d_filename) != 0) {
+                        dentry_cnt++;
+                        if((dentry_table + dentry_idx)->d_inode == inode_no) {
+                            ASSERT(dentry_obj == NULL);
+                            dentry_obj = (dentry_table + dentry_idx);
+                        }
+                    }
+                }
+            }   
+
+            if(NULL == dentry_obj) {/* 去下一个扇区继续寻找目录项 */
+                continue;
+            }
+
+            /* 找到目录项后，清除该目录项，并判断是否回收该扇区 */
+            ASSERT(dentry_cnt > 1);
+
+            if(1 == dentry_cnt && !is_dir_first_bck) {
+                uint32_t bck_btmp_idx = all_bcks[bck_idx] - part->sb->data_lba_start;
+                bitmap_set(&part->bck_btmp, bck_btmp_idx, BLOCK_BITMAP);
+                if(bck_idx < 12) {
+                    parent_dir->d_inode->i_sectors[bck_idx] = 0;
+                } else {
+                    uint32_t ext_bck_cnt = 0;
+                    uint32_t ext_bck_idx = 12;
+                    while(ext_bck_idx < 140) {
+                        if(all_bcks[ext_bck_idx++] != 0) {
+                            ext_bck_cnt++;
+                        }
+                    }
+                    ASSERT(ext_bck_cnt >= 1);
+
+                    if(ext_bck_cnt > 1) {
+                        /* 包含多个间接块，仅擦除当前块 */
+                        all_bcks[bck_idx] = 0;
+                        ide_write(part->my_disk, parent_dir->d_inode->i_sectors[12], all_bcks + 12, 1);
+                    } else {
+                        /* 仅包含一个间接块，擦除当前块，且擦除间接索引表地址 */
+                        bck_btmp_idx = parent_dir->d_inode->i_sectors[12] - part->sb->data_lba_start;
+                        bitmap_set(&part->bck_btmp, bck_btmp_idx, 0);
+                        bitmap_sync(__cur_part, bck_btmp_idx, BLOCK_BITMAP);
+
+                        parent_dir->d_inode->i_sectors[12] = 0;
+                    }
+                }
+            } else {
+                /* 仅清楚当前目录项 */
+                bzero(dentry_obj, sizeof(struct dentry));
+                ide_write(part->my_disk, all_bcks[bck_idx], io_buf, 1);
+            }
+
+            /* 更新到硬盘 */
+            ASSERT(parent_dir->d_inode->i_size >= part->sb->s_dentry_size);
+            parent_dir->d_inode->i_size -= part->sb->s_dentry_size;
+            bzero(io_buf, SECTOR_SIZE * 2);
+            inode_sync(part, parent_dir->d_inode, io_buf);
+
+            return true;
+        }
+    }
+    return false;
+}
+
+/* 判断目录是否为空(1 空 0 非空)： 仅含有 . 和 .. 两个目录（那么inode所指向的数据大小应该是两个目录项的大小） */
+int dir_is_empty(struct dir* dir) {
+    return (dir->d_inode->i_size == __cur_part->sb->s_dentry_size * 2 ? 1 : 0);
+}
+
+/* 在父目录 parent_dir 中删除 child_dir */
+int dir_remove(struct dir* parent_dir, struct dir* child_dir) {
+    //![1] 保证只有第 0 扇区之外的扇区没有数据
+    uint8_t bck_idx = 1;
+    while(bck_idx < 13) {
+        ASSERT(child_dir->d_inode->i_sectors[bck_idx++] == 0);
+    }//[1]
+    
+    /* 以下才是删除的相关代码 */
+    void* io_buf = sys_malloc(SECTOR_SIZE * 2);
+    if(NULL == io_buf) {
+        printk("dir remove: malloc for io_buf failed\n");
+        return -1;
+    }
+
+    dentry_delete(__cur_part, parent_dir, child_dir->d_inode->i_no, io_buf);
+    inode_release(__cur_part, child_dir->d_inode->i_no);
+
+    sys_free(io_buf);
+    return 0;
 }
