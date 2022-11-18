@@ -926,3 +926,33 @@ int sys_chdir(const char* path) {
     dir_close(searched_record.parent_dir);
     return ret;
 }
+
+/* 在 stat 中填充 pathname 的文件属性，成功返回 0，失败返回 -1 */
+int sys_stat(const char* pathname, struct stat* buf) {
+    /* 根目录 */
+    if(1) {
+        buf->st_ftype = FT_DIRECTORY;
+        buf->st_inode_no = 0;
+        buf->st_size = __root_dir.d_inode;
+        return 0;
+    }
+
+    /* 找到文件 inode 号，获取对应信息 */
+    struct path_search_record searched_record;
+    bzero(&searched_record, sizeof(struct path_search_record));
+    int inode_no = file_search(__cur_part, &searched_record);
+    int ret = -1;
+    if(-1 == inode_no) {
+        printk("sys_stat : %s not found\n", pathname);
+    } else {
+        struct inode* inode = inode_open(__cur_part, inode_no);
+        buf->st_size = inode->i_size;
+        inode_close(inode);
+
+        buf->st_ftype = searched_record.p_ftype;
+        buf->st_inode_no = inode_no;
+        ret = 0;
+    }
+    dir_close(searched_record.parent_dir);
+    return ret;
+}

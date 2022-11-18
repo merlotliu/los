@@ -145,9 +145,9 @@ void rewinddir(struct dir* dir) {
 }
 
 /* get path's attribute to buf */
-// int stat(const char* path, struct stat* buf) {
-//     return (int)_syscall2(SYS_STAT, path, buf);
-// }
+int stat(const char* pathname, struct stat* buf) {
+    return (int)_syscall2(SYS_STAT, pathname, buf);
+}
 
 /* list tasks' info */
 void ps(void) {

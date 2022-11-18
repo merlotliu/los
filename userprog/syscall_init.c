@@ -47,7 +47,7 @@ void syscall_init(void) {
     // syscall_table[SYS_RMDIR];
     // syscall_table[SYS_READDIR];
     // syscall_table[SYS_REWINDDIR];
-    // syscall_table[SYS_STAT];
+    syscall_table[SYS_STAT] = sys_stat;
     syscall_table[SYS_PS] = sys_ps;
     put_str("syscall_init done\n");
 }

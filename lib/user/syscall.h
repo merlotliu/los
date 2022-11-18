@@ -3,6 +3,7 @@
 
 #include "global.h"
 #include "thread.h"
+#include "fs.h"
 
 enum SYSCALL_NR {
     SYS_GETPID = 0,
@@ -90,7 +91,7 @@ struct dentry* readdir(struct dir* dir);
 void rewinddir(struct dir* dir);
 
 /* get path's attribute to buf */
-// int stat(const char* path, struct stat* buf);
+int stat(const char* pathname, struct stat* buf);
 
 /* list tasks' info */
 void ps(void);

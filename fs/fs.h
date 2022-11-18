@@ -33,6 +33,13 @@ struct path_search_record {
     enum file_type p_ftype; /* 找到的文件类型 */
 };
 
+/* 文件属性结构体 */
+struct stat {
+    uint32_t st_inode_no; /* inode number */
+    uint32_t st_size; /* file size or contain file size */
+    enum file_type st_ftype; /* file tyepe */
+};
+
 /* 根据 '/' 解析路径名存储在 name, str 之后的路径 */
 char* path_parse(char* pathname, char* name);
 
@@ -71,5 +78,8 @@ char* sys_getcwd(char* buf, size_t size);
 
 /* 更改当前工作目录为绝对路径 path，成功返回 0，失败返回 -1 */
 int sys_chdir(const char* path);
+
+/* 在 stat 中填充 pathname 的文件属性，成功返回 0，失败返回 -1 */
+int sys_stat(const char* pathname, struct stat* buf);
 
 #endif /* __FS_FS_H */

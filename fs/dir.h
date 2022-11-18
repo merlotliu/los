@@ -25,11 +25,6 @@ struct dentry {
     char d_filename[MAX_FILE_NAME_LEN];
 };
 
-/*  */
-struct stat {
-    uint32_t ino;
-};
-
 /* 打开根目录 */
 void root_dir_open(struct partition* part);
 
