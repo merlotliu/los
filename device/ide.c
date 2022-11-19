@@ -171,9 +171,9 @@ static void identify_disk(struct disk* hd) {
     sem_wait(&hd->my_channel->disk_done); /* 阻塞自己等待硬盘处理完成后唤醒 */
     
     if(!busy_wait(hd)) { /* error */
-        char error[64];
-        sprintf(error, "%s identify failed!!!!!\n", hd->name);
-        PANIC(error);
+        // char error[64];
+        // sprintf(error, "%s identify failed!!!!!\n", hd->name);
+        // PANIC(error);
     }
 
     read_sectors(hd, id_info, 1);/* 读取硬盘信息 */
@@ -250,8 +250,8 @@ static bool print_partition_info(struct list_elem* pelem, void* arg UNUSED) {
 
 /* 从硬盘 hd 读取从 lba 扇区地址开始的 sec_cnt 个扇区到 buf */
 void ide_read(struct disk* hd, uint32_t lba, void* buf, uint32_t sec_cnt) {
-    /* 该操作需要加锁，以保证一次只操作同意通道上的一块硬盘 */
     // printk("%x %x\n", lba, MAX_LBA_CNT);
+    /* 该操作需要加锁，以保证一次只操作同意通道上的一块硬盘 */
     ASSERT(lba <= MAX_LBA_CNT);
     ASSERT(sec_cnt > 0);
     locker_lock(&hd->my_channel->locker);

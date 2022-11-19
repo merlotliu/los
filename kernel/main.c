@@ -34,6 +34,7 @@ int main(void) {
     
     intr_enable(); /* open interrupt */
     // ASSERT(intr_status_get() == INTR_ON);
+
     while(1) {
         // console_put_str("Main ");
     }

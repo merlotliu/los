@@ -15,18 +15,21 @@
 struct dir {
     struct inode* d_inode;
     uint32_t d_offset; /* 记录在目录中的偏移 */
-    uint8_t d_buf[512]; /* 目录的数据缓存 */
+    uint8_t d_buf[SECTOR_SIZE]; /* 目录的数据缓存 */
 };
 
 /* directory entry struct */
 struct dentry {
-    uint32_t d_inode;
+    uint32_t d_inode_no;
     enum file_type d_ftype; /* 文件类型 */
     char d_filename[MAX_FILE_NAME_LEN];
 };
 
 /* 打开根目录 */
 void root_dir_open(struct partition* part);
+
+/* 是否为根目录 */
+bool is_root_dir(const char* pathname);
 
 /* 在分区 part 上打开 inode 节点为 inode_no 的目录并返回目录指针 */ 
 struct dir* dir_open(struct partition* part, uint32_t inode_no) ;
@@ -42,6 +45,9 @@ void dentry_create(char* filename, uint32_t inode_no, uint8_t ftype, struct dent
 
 /* 将目录项 dentry 写入父目录 parent_dir 中，io_buf 由主调函数提供 */
 bool dentry_sync(struct dir* parent_dir, struct dentry* dentry,void* io_buf);
+
+/* 读取一个目录项，成功返回 1 个目录项，失败返回 NULL */
+struct dentry* dir_read(struct dir* dir);
 
 /* 删除 parent_dir 中的 inode_no 对应的目录项 */
 bool dentry_delete(struct partition* part, struct dir* parent_dir, uint32_t inode_no, void* io_buf);

@@ -10,6 +10,11 @@ void root_dir_open(struct partition* part) {
     __root_dir.d_offset = 0;
 }
 
+/* 是否为根目录 */
+bool is_root_dir(const char* pathname) {
+    return (0 == strcmp("/", pathname) || 0 == strcmp("/.", pathname) || 0 == strcmp("/..", pathname));
+}
+
 /* 在分区 part 上打开 inode 节点为 inode_no 的目录并返回目录指针 */ 
 struct dir* dir_open(struct partition* part, uint32_t inode_no) {
     struct dir* pdir = (struct dir*)sys_malloc(sizeof(struct dir));
@@ -85,8 +90,8 @@ void dentry_create(char* filename, uint32_t inode_no, uint8_t ftype, struct dent
     ASSERT(strlen(filename) <= MAX_FILE_NAME_LEN);
 
     memcpy(dentry->d_filename, filename, strlen(filename));
-    dentry->d_inode = inode_no;
-    dentry->d_ftype = ftype;    
+    dentry->d_inode_no = inode_no;
+    dentry->d_ftype = ftype;
 }
 
 /* 将目录项 dentry 写入父目录 parent_dir 中，io_buf 由主调函数提供 */
@@ -150,6 +155,7 @@ bool dentry_sync(struct dir* parent_dir, struct dentry* dentry,void* io_buf) {
             ide_write(__cur_part->my_disk, all_bcks[bck_idx], io_buf, 1);
             parent_dir->d_inode->i_size += sizeof(struct dentry);
             
+            // printk("%d: %d + %d\n", parent_dir->d_inode->i_no, parent_dir->d_inode->i_size, sizeof(struct dentry));
             return true;
         } else {
             /* 该 block 已存在，直接读入内存，然后在里面寻找空目录项 */
@@ -160,6 +166,8 @@ bool dentry_sync(struct dir* parent_dir, struct dentry* dentry,void* io_buf) {
                     memcpy(dentry_ptr + dentry_idx, dentry, sizeof(struct dentry));
                     ide_write(__cur_part->my_disk, all_bcks[bck_idx], io_buf, 1);
                     parent_dir->d_inode->i_size += sizeof(struct dentry);
+
+                    // printk("%d: %d + %d\n", parent_dir->d_inode->i_no, parent_dir->d_inode->i_size, sizeof(struct dentry));
                     return true;
                 }
                 dentry_idx++;
@@ -169,6 +177,58 @@ bool dentry_sync(struct dir* parent_dir, struct dentry* dentry,void* io_buf) {
     }
     printk("directory is full!\n");
     return false;
+}
+
+/* 读取一个目录项，成功返回 1 个目录项，失败返回 NULL */
+struct dentry* dir_read(struct dir* dir) {
+    struct inode* dinode = dir->d_inode;
+    struct dentry* dentry_table = (struct dentry*)dir->d_buf;
+
+    uint32_t bck_idx = 0;
+    uint32_t bck_cnt = 12;
+    uint32_t all_bcks[140] = {0};
+    while(bck_idx < 12) {
+        all_bcks[bck_idx] = dinode->i_sectors[bck_idx];
+        bck_idx++;
+    }
+    if(dinode->i_sectors[12] != 0) {
+        ide_read(__cur_part->my_disk, dinode->i_sectors[12], all_bcks + 12, 1);
+        bck_cnt = 140;
+    }
+
+    uint32_t cur_dentry_pos = 0;
+    uint32_t dentry_idx = 0;
+    uint32_t dentry_size = __cur_part->sb->s_dentry_size;
+    uint32_t dentry_per_sec = SECTOR_SIZE / dentry_size;
+    /* 遍历目录 */
+    bck_idx = 0;
+    while(dir->d_offset < dinode->i_size) {
+        if(dir->d_offset >= dinode->i_size) {
+            return NULL;
+        }
+
+        if(all_bcks[bck_idx] != 0) {
+            bzero(dentry_table, SECTOR_SIZE);
+            ide_read(__cur_part->my_disk, all_bcks[bck_idx], dentry_table, 1);
+            /* 遍历每个扇区的目录项 */
+            dentry_idx = 0;
+            while(dentry_idx < dentry_per_sec) {
+                if((dentry_table + dentry_idx)->d_ftype != FT_UNKNOWN) {
+                    if(cur_dentry_pos < dir->d_offset) {
+                        cur_dentry_pos += dentry_size;
+                        dentry_idx++;
+                        continue;
+                    }
+                    ASSERT(cur_dentry_pos == dir->d_offset);
+                    dir->d_offset += dentry_size; /* 下一个返回的目录项地址 */
+                    return dentry_table + dentry_idx;
+                }
+                dentry_idx++;
+            }
+        }
+        bck_idx++;
+    }
+    return NULL;
 }
 
 /* 删除 parent_dir 中的 inode_no 对应的目录项 */
@@ -204,7 +264,7 @@ bool dentry_delete(struct partition* part, struct dir* parent_dir, uint32_t inod
                     } else if (strcmp(".", (dentry_table + dentry_idx)->d_filename) != 0
                         && strcmp("..", (dentry_table + dentry_idx)->d_filename) != 0) {
                         dentry_cnt++;
-                        if((dentry_table + dentry_idx)->d_inode == inode_no) {
+                        if((dentry_table + dentry_idx)->d_inode_no == inode_no) {
                             ASSERT(dentry_obj == NULL);
                             dentry_obj = (dentry_table + dentry_idx);
                         }
@@ -217,7 +277,7 @@ bool dentry_delete(struct partition* part, struct dir* parent_dir, uint32_t inod
             }
 
             /* 找到目录项后，清除该目录项，并判断是否回收该扇区 */
-            ASSERT(dentry_cnt > 1);
+            ASSERT(dentry_cnt >= 1);
 
             if(1 == dentry_cnt && !is_dir_first_bck) {
                 uint32_t bck_btmp_idx = all_bcks[bck_idx] - part->sb->data_lba_start;

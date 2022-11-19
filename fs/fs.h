@@ -20,10 +20,10 @@ enum file_type {
 
 /* 打开文件选项 */
 enum oflags {
-    O_RDONLY, /* 只读 */
-    O_WRONLY, /* 只写 */
-    O_RDWR, /* 读写 */
-    O_CREAT = 4 /* 创建 */
+    O_RDONLY = 1, /* 只读 */
+    O_WRONLY = 2, /* 只写 */
+    O_RDWR = 4, /* 读写 */
+    O_CREAT = 8 /* 创建 */
 };
 
 /* 查找文件的路径 */
@@ -73,8 +73,23 @@ void filesys_init(void);
 /* 创建目录 pathname，成功返回 0，失败返回 -1 */
 int sys_mkdir(const char* pathname);
 
+/* 目录打开后成功返回目录指针，失败返回NULL */
+struct dir* sys_opendir(const char* name);
+
+/* 成功关闭目录返回0，失败返回-1 */
+int sys_closedir(struct dir* dir);
+
+/* 读取目录 dir 的1个目录项，成功返回目录项地址，失败或到达尾部返回 NULL */
+struct dentry* sys_readdir(struct dir* dir);
+
+/* 将目录 dir 的偏移指针置为 0 */
+void sys_rewinddir(struct dir* dir);
+
 /* 删除空目录，成功返回 0，失败返回 -1 */
 int sys_rmdir(const char* pathname);
+
+/* 删除文件，成功返回0，失败返回-1 */
+int sys_unlink(const char* pathname);
 
 /* 把当前工作路径绝对路径写入 buf，size 是 buf 的大小，当 buf 为NULL时，由操作系统分配空间，失效返回 NULL */
 char* sys_getcwd(char* buf, size_t size);

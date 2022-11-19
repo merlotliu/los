@@ -7,6 +7,7 @@
 static char _cmd_line[MAX_CMD_LEN] = {0}; /* 存储输入的命令 */
 char __cwd_cache[MAX_PATH_LEN] = {0}; /* 记录当前目录，每次 cd 更新该内容 */
 char __final_path[MAX_PATH_LEN] = {0}; /*  */
+char __io_buf[SECTOR_SIZE] = {0}; /* 读缓冲 */
 
 char* argv[MAX_ARG_NR]; /* 命令字符串列表 */
 int argc = -1; /* 参数个数 */
@@ -110,6 +111,12 @@ void shell(void) {
             }
         } else if(strcmp("rmdir", argv[0]) == 0) {
             rmdir_builtin(argc, argv);
+        } else if(strcmp("touch", argv[0]) == 0) {
+            touch_builtin(argc, argv);
+        } else if(strcmp("echo", argv[0]) == 0) {
+            echo_builtin(argc, argv);
+        } else if(strcmp("cat", argv[0]) == 0) {
+            cat_builtin(argc, argv);
         } else if(strcmp("rm", argv[0]) == 0) {
             rm_builtin(argc, argv);
         } else {

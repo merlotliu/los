@@ -22,5 +22,14 @@ char* cd_builtin(int argc, char** argv);
 
 int rmdir_builtin(int argc, char** argv UNUSED) ;
 
+/* create file (read & write) */
+void touch_builtin(int argc, char** argv);
+
+/* usage: echo content >> filename. '>>' is append. '>' is override. */
+void echo_builtin(int argc, char** argv);
+
+/* usage: cat filename*/
+void cat_builtin(int argc, char** argv);
+
 int rm_builtin(int argc, char** argv UNUSED) ;
 #endif /* __SHELL_CMD_BUILTIN_H */
