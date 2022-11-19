@@ -715,6 +715,40 @@ ssize_t sys_read(int fd, void* buf, size_t count) {
     return ret;
 }
 
+/* The  lseek()  function  repositions the offset of the open file associated with the file descriptor fd to the argument offset according to the directive whence*/
+off_t sys_lseek(int fd, off_t offset, uint8_t whence) {
+    if(fd < 0) {
+        printk("sys_lseek: fd error\n");
+        return -1;
+    }
+
+    uint32_t gfd = fd_local2global(fd);
+    struct file* file = &__file_table[gfd];
+    off_t new_off = 0;
+    switch(whence) {
+        case SEEK_SET: {
+            new_off = offset;
+            break;
+        }
+        case SEEK_CUR: {
+            new_off = (off_t)file->fd_offset + offset;
+            break;
+        }
+        case SEEK_END: {
+            new_off = (off_t)file->fd_inode->i_size + offset;
+            break;
+        }
+        default: {
+            printk("sys_lseek: unknow whence value '%d'\n", whence);
+        }
+    }
+    if(new_off < 0) {
+        return -1;
+    }
+    file->fd_offset = new_off;
+    return new_off;
+}
+
 /* 在磁盘上搜索文件系统，若没有则格式化分区创建文件系统 */
 void filesys_init(void) {
     uint8_t channel_no = 0;

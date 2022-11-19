@@ -63,8 +63,8 @@ int open(char* pathname, uint8_t flag);
 /* close fd */
 int close(int fd);
 
-/* set file seek */
-int lseek(int fd, int offset, uint8_t whence);
+/* set file offset */
+off_t lseek(int fd, off_t offset, uint8_t whence);
 
 /* delete file pathname */
 int unlink(const char* pathname);

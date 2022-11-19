@@ -294,20 +294,22 @@ void echo_builtin(int argc, char** argv) {
             idx_start++;
             cnt -= 2;
         }
+        /* filename */
+        path2abs(argv[3], __final_path);
+        int fd = open(__final_path, O_WRONLY);
+        if(-1 == fd) {
+            printf("echo: fd error");
+            return ;
+        }
         /* '>' or '>>' */
         if(0 == strcmp(">", argv[2])) {
-
+            lseek(fd, 0, SEEK_SET);
         } else if(0 == strcmp(">>", argv[2])) {
-
+            lseek(fd, 0, SEEK_END);
         } else {
             printf("echo: unknow key '%s'", argv[2]);
             return;    
         }
-        /* filename */
-        path2abs(argv[3], __final_path);
-
-        /* write */
-        int fd = open(__final_path, O_WRONLY);
         write(fd, idx_start, cnt);
         close(fd);
     } else {

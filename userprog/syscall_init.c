@@ -38,7 +38,7 @@ void syscall_init(void) {
     syscall_table[SYS_GETCWD] = sys_getcwd;
     syscall_table[SYS_OPEN] = sys_open;
     syscall_table[SYS_CLOSE] = sys_close;
-    // syscall_table[SYS_LSEEK] = sys_lseek;
+    syscall_table[SYS_LSEEK] = sys_lseek;
     syscall_table[SYS_UNLINK] = sys_unlink;
     syscall_table[SYS_MKDIR] = sys_mkdir;
     syscall_table[SYS_OPENDIR] = sys_opendir;

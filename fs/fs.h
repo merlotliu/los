@@ -26,6 +26,13 @@ enum oflags {
     O_CREAT = 8 /* 创建 */
 };
 
+/* offset */
+enum whence {
+    SEEK_SET = 1,
+    SEEK_CUR = 2,
+    SEEK_END = 3
+};
+
 /* 查找文件的路径 */
 struct path_search_record {
     char searched_path[MAX_PATH_LEN]; /* 父路径 */
@@ -66,6 +73,9 @@ ssize_t sys_write(int fd, const void* buf, size_t count);
 
 /* 从 buf 中连续读入 count 字节到 fd，成功返回读入的字节数，失败返回 -1 */
 ssize_t sys_read(int fd, void* buf, size_t count);
+
+/* The  lseek()  function  repositions the offset of the open file associated with the file descriptor fd to the argument offset according to the directive whence*/
+off_t sys_lseek(int fd, off_t offset, uint8_t whence);
 
 /* 在磁盘上搜索文件系统，若没有则格式化分区创建文件系统 */
 void filesys_init(void);

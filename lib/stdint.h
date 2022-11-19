@@ -13,5 +13,6 @@ typedef unsigned long long int uint64_t;
 
 typedef uint32_t size_t;
 typedef int32_t ssize_t;
+typedef signed long int off_t;
 
 #endif /* __LIB_STDINT_H */
