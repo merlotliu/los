@@ -1067,9 +1067,39 @@ int sys_rmdir(const char* pathname) {
 int sys_unlink(const char* pathname) {
     ASSERT(strlen(pathname) < MAX_FILE_NAME_LEN);
 
-    printk("wait. implementing...\n");
+    /* 1 检查文件是否存在 */
+    struct path_search_record searched_record;
+    bzero(&searched_record, sizeof(struct path_search_record));
+    int inode_no = file_search(pathname, &searched_record);
+    if(-1 == inode_no) {
+        printk("file %s not found!\n", pathname, searched_record.searched_path);
+        dir_close(searched_record.parent_dir);
+        return -1;
+    }
+    if(FT_DIRECTORY == searched_record.p_ftype) {
+        return sys_rmdir(pathname);
+    }
+    /* 如果当前文件处于打开的状态不允许删除 */
+    uint32_t file_idx = 0;
+    for(; file_idx < MAX_FILE_OPEN; file_idx++) {
+        if(__file_table[file_idx].fd_inode != NULL && (uint32_t)inode_no == __file_table[file_idx].fd_inode->i_no) {
+            dir_close(searched_record.parent_dir);
+            printk("file %s is inuse, not allow to delete!\n", pathname);
+            return -1;
+        }
+    }
+    void* io_buf = sys_malloc(SECTOR_SIZE * 2);
+    if(NULL == io_buf) {
+        printk("sys_unlink : sys_malloc for io_buf failed\n");
+        return -1;
+    }
 
-    return -1;
+    /* 删除 */
+    dentry_delete(__cur_part, searched_record.parent_dir, inode_no, io_buf);
+    inode_release(__cur_part, inode_no);
+    sys_free(io_buf);
+    dir_close(searched_record.parent_dir);
+    return 0;
 }
 
 /* 把当前工作路径绝对路径写入 buf，size 是 buf 的大小，当 buf 为NULL时，由操作系统分配空间，失效返回 NULL */
