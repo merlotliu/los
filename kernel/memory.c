@@ -453,7 +453,7 @@ void* sys_malloc(uint32_t size) {
             arena->desc = &descs[desc_idx];
             arena->large = false;
             arena->cnt = descs[desc_idx].bcks_per_arena;
-            
+
             enum intr_status old_stat = intr_disable();
             uint32_t bck_idx;
             for(bck_idx = 0; bck_idx < descs[desc_idx].bcks_per_arena; bck_idx++) {
@@ -603,7 +603,6 @@ void sys_free(void* ptr) {
     } else {
         list_push_back(&arena->desc->free_list, &bck->free_elem);
         arena->cnt++;
-
         if(arena->cnt == arena->desc->bcks_per_arena) {
             uint32_t bck_idx;
             for (bck_idx = 0; bck_idx < arena->cnt; bck_idx++) {

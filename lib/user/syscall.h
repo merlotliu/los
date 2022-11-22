@@ -27,7 +27,8 @@ enum SYSCALL_NR {
     SYS_READDIR,
     SYS_REWINDDIR,
     SYS_STAT,
-    SYS_PS
+    SYS_PS,
+    SYS_EXECV
 };
 
 /* get current process id */
@@ -95,5 +96,8 @@ int stat(const char* pathname, struct stat* buf);
 
 /* list tasks' info */
 void ps(void);
+
+/* The  exec()  family  of functions replaces the current process image with a new process image. */
+int execv(const char *path, const char *argv[]);
 
 #endif /* __LIB_USER_SYSCALL_H */

@@ -15,7 +15,7 @@ struct inode_position {
 
 /* 获取 inode 所在的扇区和山区内的偏移量 */
 static void inode_locate(struct partition* part, uint32_t inode_no, struct inode_position* inode_pos) {
-    ASSERT(inode_no < 4096);
+    // ASSERT(inode_no < 4096);
 
     uint32_t inode_table_lba = part->sb->inode_table_lba_base;
     uint32_t inode_size = sizeof(struct inode);

@@ -45,7 +45,8 @@ OBJS		= 	$(BUILD_DIR)/main.o \
 				$(BUILD_DIR)/inode.o \
 				$(BUILD_DIR)/fork.o \
 				$(BUILD_DIR)/shell.o \
-				$(BUILD_DIR)/cmd_builtin.o
+				$(BUILD_DIR)/cmd_builtin.o \
+				$(BUILD_DIR)/exec.o
 
 # C
 # kernel
@@ -144,6 +145,9 @@ $(BUILD_DIR)/fork.o: userprog/fork.c
 	$(CC) $(CFLAGS) $< -o $@
 
 $(BUILD_DIR)/syscall_init.o: userprog/syscall_init.c
+	$(CC) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/exec.o: userprog/exec.c
 	$(CC) $(CFLAGS) $< -o $@
 
 # assembly	

@@ -159,7 +159,7 @@ pid_t sys_fork(void) {
     ASSERT(!(elem_find(&__thread_all_list, &child_thread->all_list_tag)));
     list_push_back(&__thread_all_list, &child_thread->all_list_tag);
 
-    printf("%s 0x%x\n", child_thread->name, child_thread);
+    // printf("%s 0x%x\n", child_thread->name, child_thread);
     
     return child_thread->pid; /* child pid */
 }

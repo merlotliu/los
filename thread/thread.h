@@ -12,6 +12,8 @@
 
 #define MAX_FILES_OPEN_PER_PROC 8 /* 每个进程最多能打开的文件描述符个数 */
 
+#define TASK_NAME_LEN 16 /* 进程名长度 */
+
 /* general thread function type */
 typedef void thread_func(void*);
 

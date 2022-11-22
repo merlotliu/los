@@ -3,6 +3,7 @@
 #include "fs.h"
 #include "stdio.h"
 #include "cmd_builtin.h"
+#include "syscall.h"
 
 static char _cmd_line[MAX_CMD_LEN] = {0}; /* 存储输入的命令 */
 char __cwd_cache[MAX_PATH_LEN] = {0}; /* 记录当前目录，每次 cd 更新该内容 */
@@ -120,12 +121,25 @@ void shell(void) {
         } else if(strcmp("rm", argv[0]) == 0) {
             rm_builtin(argc, argv);
         } else {
-            printf("can't recognize command '%s", argv[0]);
-            int32_t i;
-            for(i = 1; i < argc; i++) {
-                printf(" %s", argv[i]);
+            /* 外部命令 */
+            pid_t pid = fork();
+            if(pid) {
+                printf("%d\n", pid);
+                while(1);
+            } else {
+                path2abs(argv[0], __final_path);
+                argv[0] = __final_path;
+                struct stat file_stat;
+                bzero(&file_stat, sizeof(struct stat));
+                if(-1 == stat(argv[0], &file_stat)) {
+                    printf("my_shell: cannot access %s: No such file or directory\n", argv[0]);
+                } else {
+                    if(-1 == execv(argv[0], (const char**)argv)) {
+                        printf("my_shell: call %s failed!\n", argv[0]);
+                    }
+                }
+                while(1);
             }
-            printf("\n");
         }
     }
     PANIC("my_shell: should not be here");

@@ -153,3 +153,8 @@ int stat(const char* pathname, struct stat* buf) {
 void ps(void) {
     _syscall0(SYS_PS);
 }
+
+/* The  exec()  family  of functions replaces the current process image with a new process image. */
+int execv(const char *path, const char *argv[]) {
+    return (int)_syscall2(SYS_EXECV, path, argv);
+}

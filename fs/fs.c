@@ -367,7 +367,7 @@ ssize_t file_write(struct file* file, const void* buf, size_t count) {
         printk("exceed max file_size 71680 bytes, write file failed\n");
         return -1;
     }   
-    uint8_t* io_buf = sys_malloc(SECTOR_SIZE);
+    uint8_t* io_buf = (uint8_t*)sys_malloc(SECTOR_SIZE);
     if(io_buf == NULL) {
         printk("file_write: sys_malloc for io_buf failed\n");
         return -1;
@@ -384,7 +384,7 @@ ssize_t file_write(struct file* file, const void* buf, size_t count) {
     if(file->fd_inode->i_sectors[0] == 0) {
         bck_lba = block_bitmap_alloc(__cur_part);
         if(bck_lba == 1) {
-            printk("file_writ-e: block_bi tmap_alloc failed\n");
+            printk("file_write: block_bitmap_alloc failed\n");
             return -1;
         }
         file->fd_inode->i_sectors[0] = bck_lba;
@@ -396,6 +396,7 @@ ssize_t file_write(struct file* file, const void* buf, size_t count) {
     ASSERT(file_will_use_bcks <= 140);
     uint32_t add_bcks = file_will_use_bcks - file_used_bcks; /* 需要增加的块 */
 
+    printk("file_used_bcks %d file_will_use_bcks %d\n", file_used_bcks, file_will_use_bcks);
     if(add_bcks == 0) { /* 不需要增加块 */
         if(file_will_use_bcks < 13) { /* 数据量在 12 块之内(0-11） */
             all_bcks[file_used_bcks - 1] = file->fd_inode->i_sectors[file_used_bcks - 1];
@@ -496,11 +497,11 @@ ssize_t file_write(struct file* file, const void* buf, size_t count) {
         }
         memcpy(io_buf + sec_bytes_off, src, chunk_size);
         ide_write(__cur_part->my_disk, sec_lba, io_buf, 1);
-        // printk("file write at lba 0x%x\n", sec_lba); // 调试，完成后去掉
 
         src += chunk_size;
         file->fd_inode->i_size += chunk_size;
         file->fd_offset += chunk_size;
+        // printk("file write at lba 0x%x size %d\n", sec_lba, file->fd_inode->i_size); // 调试，完成后去掉
         
         bytes_written += chunk_size;
         bytes_rest -= chunk_size;
@@ -509,12 +510,12 @@ ssize_t file_write(struct file* file, const void* buf, size_t count) {
     
     sys_free(all_bcks);
     sys_free(io_buf);
-    return -1;
+    return bytes_written;
 }
 
 /* 从 file 连续读取 count 个字节到 buf, 成功则返回读到的字节数，失败或到达文件末尾则返回 -1 */
-ssize_t file_read(struct file* file, void* buf, size_t count) {
     /* 如果读取的字节数 count 超过剩余字节数，返回剩余的全部字节数，若到达文件末尾，返回-1 */
+ssize_t file_read(struct file* file, void* buf, size_t count) {
     uint32_t size = count;
     if(file->fd_offset + count > file->fd_inode->i_size) {
         size = file->fd_inode->i_size - file->fd_offset;
@@ -591,10 +592,9 @@ ssize_t file_read(struct file* file, void* buf, size_t count) {
         byte_read += chunk_size;
         byte_rest -= chunk_size;
     }
-
     sys_free(all_bcks);
     sys_free(io_buf);
-    return -1;
+    return byte_read;
 }
 
 /* 成功打开或创建文件后，返回文件描述符，否则返回 -1 */
@@ -604,7 +604,7 @@ int32_t sys_open(const char* pathname, uint8_t flags) {
         return -1;
     }
     
-    ASSERT(flags <= 7);
+    ASSERT(flags <= 16);
     int32_t fd = -1;
 
     /*  1. 检查文件是否存在，如果中间有目录未找到则报错；
@@ -647,8 +647,7 @@ int32_t sys_open(const char* pathname, uint8_t flags) {
     if(O_CREAT & flags) {
         fd = file_create(searched_record.parent_dir, (strrchr(pathname,'/') + 1), flags);
         dir_close(searched_record.parent_dir);
-    }
-    if((O_RDONLY & flags) || (O_WRONLY & flags) || (O_RDWR & flags)) {
+    } else if((O_RDONLY & flags) || (O_WRONLY & flags) || (O_RDWR & flags)) {
         fd = file_open(inode_no, flags);
     }
     return fd;
@@ -779,13 +778,13 @@ void filesys_init(void) {
                 if(cur_part->sec_cnt != 0) {
                     memset(sb_buf, 0, SECTOR_SIZE);
                     ide_read(hd, cur_part->lba_start + 1, sb_buf, 1);
-                    if(SUPER_BLOCK_MAGIC == sb_buf->s_magic) {
-                        /* 已存在文件系统 */
-                        printk("%s has file system\n", cur_part->name);
-                    } else {
+                    // if(SUPER_BLOCK_MAGIC == sb_buf->s_magic) {
+                    //     /* 已存在文件系统 */
+                    //     printk("%s has file system\n", cur_part->name);
+                    // } else {
                         printk("formatting %s's partition %s\n", hd->name, cur_part->name);
                         partition_format(cur_part);
-                    }
+                    // }
                 }
                 part_idx++;
                 cur_part++;
